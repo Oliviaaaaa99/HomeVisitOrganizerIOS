@@ -94,3 +94,41 @@ export async function listProperties(): Promise<{ items: Property[] }> {
 export async function getProperty(id: string): Promise<PropertyDetail> {
   return authed<PropertyDetail>(`${API.PROPERTY}/v1/properties/${id}`);
 }
+
+export type CreatePropertyInput = {
+  address: string;
+  kind: "rental" | "for_sale";
+  latitude?: number;
+  longitude?: number;
+  source_url?: string;
+};
+
+export async function createProperty(input: CreatePropertyInput): Promise<Property> {
+  return authed<Property>(`${API.PROPERTY}/v1/properties`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePropertyStatus(
+  id: string,
+  status: Property["status"],
+): Promise<Property> {
+  return authed<Property>(`${API.PROPERTY}/v1/properties/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function archiveProperty(id: string): Promise<void> {
+  // DELETE returns 204 with no body — bypass authed() so we don't try to JSON-parse empty.
+  const access = await loadAccess();
+  if (!access) throw new Error("not signed in");
+  const res = await fetch(`${API.PROPERTY}/v1/properties/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} archive: ${await res.text()}`);
+  }
+}

@@ -1,21 +1,26 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import PropertyDetailScreen from "./src/screens/PropertyDetailScreen";
 import SignInScreen from "./src/screens/SignInScreen";
 import { loadAccess } from "./src/storage";
 
-// Tier 1 keeps routing absurdly simple — three screens, one state machine.
-// Adding expo-router can wait until we have ≥5 screens or deep links.
+// Tier 1 keeps routing absurdly simple — four screens, one state machine.
+// Adding expo-router can wait until we have ≥6 screens or deep links.
 type Screen =
   | { name: "loading" }
   | { name: "sign-in" }
   | { name: "home" }
+  | { name: "add" }
   | { name: "detail"; propertyId: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
+  // Bumped whenever a downstream action (create, status change, archive) needs
+  // Home to refetch on its next mount.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // On boot, peek at AsyncStorage. If we already have a JWT, skip sign-in.
   useEffect(() => {
@@ -38,14 +43,28 @@ export default function App() {
       )}
       {screen.name === "home" && (
         <HomeScreen
+          reloadKey={reloadKey}
           onOpenProperty={(id) => setScreen({ name: "detail", propertyId: id })}
+          onAddProperty={() => setScreen({ name: "add" })}
           onSignedOut={() => setScreen({ name: "sign-in" })}
+        />
+      )}
+      {screen.name === "add" && (
+        <AddPropertyScreen
+          onCancel={() => setScreen({ name: "home" })}
+          onCreated={() => {
+            setReloadKey((k) => k + 1);
+            setScreen({ name: "home" });
+          }}
         />
       )}
       {screen.name === "detail" && (
         <PropertyDetailScreen
           propertyId={screen.propertyId}
-          onBack={() => setScreen({ name: "home" })}
+          onBack={() => {
+            setReloadKey((k) => k + 1);
+            setScreen({ name: "home" });
+          }}
         />
       )}
     </View>

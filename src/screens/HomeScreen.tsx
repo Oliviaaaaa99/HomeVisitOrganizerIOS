@@ -16,10 +16,17 @@ import { colors, radii, shadow } from "../theme";
 
 type Props = {
   onOpenProperty: (id: string) => void;
+  onAddProperty: () => void;
   onSignedOut: () => void;
+  reloadKey: number;
 };
 
-export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
+export default function HomeScreen({
+  onOpenProperty,
+  onAddProperty,
+  onSignedOut,
+  reloadKey,
+}: Props) {
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -35,7 +42,7 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, reloadKey]);
 
   async function handleSignOut() {
     await clearTokens();
@@ -80,8 +87,10 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
           <Text style={styles.emptyEmoji}>🌸</Text>
           <Text style={styles.emptyTitle}>No properties yet</Text>
           <Text style={styles.emptyHint}>
-            Tour your first apartment to start tracking. Capture flow ships in
-            Tier 2.
+            Tap{" "}
+            <Text style={styles.emptyHintEm}>+ Add</Text>{" "}
+            to track your first place. Capture flow (camera, photos) ships in Tier
+            2.
           </Text>
         </View>
       ) : (
@@ -119,6 +128,21 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
           )}
         />
       )}
+
+      {/* Floating + Add button */}
+      <Pressable
+        onPress={onAddProperty}
+        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+      >
+        <LinearGradient
+          colors={colors.gradientButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabInner}
+        >
+          <Text style={styles.fabText}>+ Add</Text>
+        </LinearGradient>
+      </Pressable>
     </View>
   );
 }
@@ -127,7 +151,9 @@ function Pill({ text }: { text: string }) {
   const c = colors.pill[text] ?? { bg: colors.borderSoft, fg: colors.textSecondary };
   return (
     <View style={[styles.pill, { backgroundColor: c.bg }]}>
-      <Text style={[styles.pillText, { color: c.fg }]}>{text.replace("_", " ")}</Text>
+      <Text style={[styles.pillText, { color: c.fg }]}>
+        {text.replace("_", " ")}
+      </Text>
     </View>
   );
 }
@@ -190,7 +216,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  listContent: { padding: 18, paddingTop: 22 },
+  emptyHintEm: { color: colors.primaryDeep, fontWeight: "700" },
+  listContent: { padding: 18, paddingTop: 22, paddingBottom: 100 },
   sep: { height: 14 },
   card: {
     backgroundColor: colors.surface,
@@ -212,10 +239,25 @@ const styles = StyleSheet.create({
   },
   chevron: { fontSize: 24, color: colors.primary, marginLeft: 8 },
   badges: { flexDirection: "row", marginTop: 12, gap: 8 },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+  pill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radii.pill },
+  pillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 22,
+    borderRadius: radii.pill,
+    ...shadow.card,
+  },
+  fabInner: {
+    paddingHorizontal: 22,
+    paddingVertical: 14,
     borderRadius: radii.pill,
   },
-  pillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  fabText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
 });
