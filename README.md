@@ -33,7 +33,7 @@ Capture / AI ranking / settings / Apple+Google sign-in / push notifications all 
 ├── App.tsx                          # state-machine entry, picks screen
 ├── app.json                         # Expo config
 ├── src/
-│   ├── config.ts                    # backend host (LAN IP for dev)
+│   ├── config.ts                    # backend host (reads EXPO_PUBLIC_API_HOST)
 │   ├── api.ts                       # fetch wrapper + types
 │   ├── storage.ts                   # AsyncStorage helpers for JWT
 │   └── screens/
@@ -57,16 +57,14 @@ make run-property &   # :8082
 make run-media &      # :8083
 ```
 
-### 2. Update `src/config.ts` with your Mac's WiFi IP
+### 2. Point Expo at your Mac's WiFi IP via a local env file
 
 ```bash
-ipconfig getifaddr en0   # e.g. 10.0.0.105
+ipconfig getifaddr en0           # prints something like 192.0.2.10
+echo "EXPO_PUBLIC_API_HOST=http://$(ipconfig getifaddr en0)" > .env.local
 ```
 
-Edit `src/config.ts`:
-```ts
-const HOST = "http://10.0.0.105";
-```
+`.env.local` is gitignored, so your LAN IP never lands in the repo. `src/config.ts` reads `EXPO_PUBLIC_API_HOST` automatically and falls back to `http://localhost` if it's not set.
 
 ### 3. Start Expo
 

@@ -1,12 +1,14 @@
 // Backend service URLs.
 //
-// Tier 1 dev: hard-coded to the Mac's LAN IP. The iPhone running the Expo Go
-// build hits these directly when on the same WiFi. When we move to a deployed
-// backend (M3+), swap to the real domain.
+// Tier 1 dev: the iPhone (running Expo Go) and the Mac (running the backend)
+// must share a WiFi, and the iPhone reaches the Mac via the Mac's LAN IP.
+// Set this in a local `.env` (gitignored) so the IP never lands in git:
 //
-// To change: update IP here, save the file. Expo's Fast Refresh picks it up
-// without restarting.
-const HOST = "http://10.0.0.105";
+//   EXPO_PUBLIC_API_HOST=http://192.0.2.10
+//
+// `npx expo start` automatically picks up `.env` / `.env.local`. When we move
+// to a deployed backend (M3+), swap the env var to the real domain.
+const HOST = process.env.EXPO_PUBLIC_API_HOST ?? "http://localhost";
 
 export const API = {
   USER: `${HOST}:8080`,
