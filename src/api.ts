@@ -52,6 +52,24 @@ export type PropertyDetail = Property & {
   notes: Note[];
 };
 
+export type MediaItem = {
+  id: string;
+  unit_id: string;
+  media_type: "photo" | "video_short" | "video_long";
+  s3_key: string;
+  url: string;
+  caption?: string;
+  captured_at: string;
+  expires_at: string;
+};
+
+export type PresignedUpload = {
+  s3_key: string;
+  url: string;
+  expires_at: string;
+  media_type: string;
+};
+
 export type AuthResponse = {
   access_token: string;
   refresh_token: string;
@@ -257,6 +275,62 @@ export async function updateNote(
     method: "PATCH",
     body: JSON.stringify({ body }),
   });
+}
+
+// --- media (uploads + listing) ---
+
+export async function listMedia(
+  unitId: string,
+): Promise<{ items: MediaItem[] }> {
+  return authed<{ items: MediaItem[] }>(
+    `${API.MEDIA}/v1/units/${unitId}/media`,
+  );
+}
+
+export async function presignMedia(
+  unitId: string,
+  count: number,
+  mediaType: "photo" | "video_short" | "video_long" = "photo",
+): Promise<{ uploads: PresignedUpload[] }> {
+  const items = Array.from({ length: count }, () => ({ media_type: mediaType }));
+  return authed<{ uploads: PresignedUpload[] }>(
+    `${API.MEDIA}/v1/units/${unitId}/media:presign`,
+    {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    },
+  );
+}
+
+export type CommitItem = {
+  s3_key: string;
+  media_type: "photo" | "video_short" | "video_long";
+  caption?: string;
+  duration_s?: number;
+};
+
+export async function commitMedia(
+  unitId: string,
+  items: CommitItem[],
+): Promise<{ committed: { id: string; s3_key: string }[] }> {
+  return authed<{ committed: { id: string; s3_key: string }[] }>(
+    `${API.MEDIA}/v1/units/${unitId}/media:commit`,
+    {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    },
+  );
+}
+
+export async function deleteMedia(mediaId: string): Promise<void> {
+  const access = await loadAccess();
+  if (!access) throw new Error("not signed in");
+  const res = await fetch(`${API.MEDIA}/v1/media/${mediaId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  if (!res.ok)
+    throw new Error(`${res.status} delete media: ${await res.text()}`);
 }
 
 export async function deleteNote(noteId: string): Promise<void> {

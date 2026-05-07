@@ -27,6 +27,7 @@ import {
   type Unit,
 } from "../api";
 import { colors, radii, shadow } from "../theme";
+import PhotoStrip from "./PhotoStrip";
 
 type Props = {
   propertyId: string;
@@ -234,38 +235,40 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
                   }}
                 />
               ) : (
-                <Pressable
-                  key={u.id}
-                  onPress={() => {
-                    setUnitMode(u.id);
-                    setNoteMode(null);
-                  }}
-                  style={({ pressed }) => [
-                    styles.row,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <View style={styles.rowMain}>
-                    <Text style={styles.rowTitle}>
-                      {u.unit_label ?? u.unit_type}
-                    </Text>
-                    <Text style={styles.rowSubtitle}>
-                      {u.unit_type}
-                      {u.beds != null && u.baths != null
-                        ? ` · ${u.beds}BR/${u.baths}BA`
-                        : ""}
-                      {u.sqft ? ` · ${u.sqft} sqft` : ""}
-                    </Text>
-                  </View>
-                  {u.price_cents != null ? (
-                    <Text style={styles.price}>
-                      ${(u.price_cents / 100).toLocaleString()}
-                      {data.kind === "rental" ? (
-                        <Text style={styles.priceSuffix}>/mo</Text>
-                      ) : null}
-                    </Text>
-                  ) : null}
-                </Pressable>
+                <View key={u.id} style={styles.unitBlock}>
+                  <Pressable
+                    onPress={() => {
+                      setUnitMode(u.id);
+                      setNoteMode(null);
+                    }}
+                    style={({ pressed }) => [
+                      styles.row,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <View style={styles.rowMain}>
+                      <Text style={styles.rowTitle}>
+                        {u.unit_label ?? u.unit_type}
+                      </Text>
+                      <Text style={styles.rowSubtitle}>
+                        {u.unit_type}
+                        {u.beds != null && u.baths != null
+                          ? ` · ${u.beds}BR/${u.baths}BA`
+                          : ""}
+                        {u.sqft ? ` · ${u.sqft} sqft` : ""}
+                      </Text>
+                    </View>
+                    {u.price_cents != null ? (
+                      <Text style={styles.price}>
+                        ${(u.price_cents / 100).toLocaleString()}
+                        {data.kind === "rental" ? (
+                          <Text style={styles.priceSuffix}>/mo</Text>
+                        ) : null}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                  <PhotoStrip unitId={u.id} />
+                </View>
               ),
             )
           )}
@@ -962,6 +965,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: colors.pinkDeep, fontSize: 14, fontWeight: "700" },
 
+  unitBlock: { marginBottom: 14 },
   row: {
     backgroundColor: colors.surface,
     borderRadius: radii.card,
@@ -969,7 +973,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
     ...shadow.card,
   },
   rowMain: { flex: 1 },
