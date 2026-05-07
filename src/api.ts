@@ -322,6 +322,19 @@ export async function commitMedia(
   );
 }
 
+export async function updateMediaCaption(
+  mediaId: string,
+  caption: string,
+): Promise<{ id: string; caption?: string }> {
+  return authed<{ id: string; caption?: string }>(
+    `${API.MEDIA}/v1/media/${mediaId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ caption }),
+    },
+  );
+}
+
 export async function deleteMedia(mediaId: string): Promise<void> {
   const access = await loadAccess();
   if (!access) throw new Error("not signed in");

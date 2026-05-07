@@ -4,11 +4,14 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import {
@@ -16,6 +19,7 @@ import {
   deleteMedia,
   listMedia,
   presignMedia,
+  updateMediaCaption,
   type MediaItem,
 } from "../api";
 import { colors, radii, shadow } from "../theme";
@@ -30,6 +34,50 @@ export default function PhotoStrip({ unitId }: Props) {
   const [progress, setProgress] = useState(0);
   const [viewerKey, setViewerKey] = useState<MediaItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingCaption, setEditingCaption] = useState(false);
+  const [captionDraft, setCaptionDraft] = useState("");
+  const [savingCaption, setSavingCaption] = useState(false);
+
+  function openViewer(item: MediaItem) {
+    setViewerKey(item);
+    setEditingCaption(false);
+    setCaptionDraft(item.caption ?? "");
+  }
+
+  function closeViewer() {
+    setViewerKey(null);
+    setEditingCaption(false);
+    setCaptionDraft("");
+  }
+
+  async function saveCaption() {
+    if (!viewerKey) return;
+    const trimmed = captionDraft.trim();
+    if (trimmed === (viewerKey.caption ?? "")) {
+      setEditingCaption(false);
+      return;
+    }
+    setSavingCaption(true);
+    try {
+      await updateMediaCaption(viewerKey.id, trimmed);
+      // Update both the strip and the open viewer so the change shows immediately.
+      setItems((prev) =>
+        prev
+          ? prev.map((m) =>
+              m.id === viewerKey.id
+                ? { ...m, caption: trimmed || undefined }
+                : m,
+            )
+          : prev,
+      );
+      setViewerKey({ ...viewerKey, caption: trimmed || undefined });
+      setEditingCaption(false);
+    } catch (err: any) {
+      Alert.alert("Couldn't save caption", err?.message ?? String(err));
+    } finally {
+      setSavingCaption(false);
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -139,13 +187,20 @@ export default function PhotoStrip({ unitId }: Props) {
         {items?.map((item) => (
           <Pressable
             key={item.id}
-            onPress={() => setViewerKey(item)}
+            onPress={() => openViewer(item)}
             style={({ pressed }) => [
               styles.thumb,
               pressed && { opacity: 0.85 },
             ]}
           >
             <Image source={{ uri: item.url }} style={styles.thumbImg} />
+            {item.caption ? (
+              <View style={styles.thumbCaptionBadge}>
+                <Text numberOfLines={1} style={styles.thumbCaptionText}>
+                  {item.caption}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         ))}
 
@@ -179,13 +234,13 @@ export default function PhotoStrip({ unitId }: Props) {
         visible={viewerKey !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setViewerKey(null)}
+        onRequestClose={closeViewer}
       >
-        <View style={styles.viewer}>
-          <Pressable
-            style={styles.viewerBackdrop}
-            onPress={() => setViewerKey(null)}
-          />
+        <KeyboardAvoidingView
+          style={styles.viewer}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable style={styles.viewerBackdrop} onPress={closeViewer} />
           {viewerKey ? (
             <View style={styles.viewerContent}>
               <Image
@@ -193,11 +248,71 @@ export default function PhotoStrip({ unitId }: Props) {
                 style={styles.viewerImg}
                 resizeMode="contain"
               />
+
+              <View style={styles.captionBlock}>
+                {editingCaption ? (
+                  <>
+                    <TextInput
+                      value={captionDraft}
+                      onChangeText={setCaptionDraft}
+                      placeholder="Add a caption…"
+                      placeholderTextColor="#FFFFFF77"
+                      style={styles.captionInput}
+                      multiline
+                      maxLength={200}
+                      autoFocus
+                    />
+                    <View style={styles.captionEditRow}>
+                      <Pressable
+                        onPress={() => {
+                          setEditingCaption(false);
+                          setCaptionDraft(viewerKey.caption ?? "");
+                        }}
+                        disabled={savingCaption}
+                        style={styles.captionCancel}
+                      >
+                        <Text style={styles.captionCancelText}>Cancel</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={saveCaption}
+                        disabled={savingCaption}
+                        style={styles.captionSave}
+                      >
+                        {savingCaption ? (
+                          <ActivityIndicator
+                            color={colors.primaryDeep}
+                            size="small"
+                          />
+                        ) : (
+                          <Text style={styles.captionSaveText}>Save</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </>
+                ) : (
+                  <Pressable
+                    onPress={() => {
+                      setCaptionDraft(viewerKey.caption ?? "");
+                      setEditingCaption(true);
+                    }}
+                    style={styles.captionDisplay}
+                  >
+                    <Text
+                      style={
+                        viewerKey.caption
+                          ? styles.captionText
+                          : styles.captionPlaceholder
+                      }
+                    >
+                      {viewerKey.caption ?? "Tap to add a caption"}
+                    </Text>
+                    <Text style={styles.captionEditHint}>Edit</Text>
+                  </Pressable>
+                )}
+              </View>
+
               <View style={styles.viewerActions}>
-                <Pressable
-                  onPress={() => setViewerKey(null)}
-                  style={styles.viewerClose}
-                >
+                <Pressable onPress={closeViewer} style={styles.viewerClose}>
                   <Text style={styles.viewerCloseText}>Close</Text>
                 </Pressable>
                 <Pressable
@@ -214,7 +329,7 @@ export default function PhotoStrip({ unitId }: Props) {
               </View>
             </View>
           ) : null}
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -303,4 +418,83 @@ const styles = StyleSheet.create({
     borderColor: colors.pinkSoft,
   },
   viewerDeleteText: { color: colors.pinkSoft, fontWeight: "700", fontSize: 14 },
+  thumbCaptionBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    backgroundColor: "#000000AA",
+  },
+  thumbCaptionText: {
+    color: "#FFFFFFEE",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  captionBlock: { marginTop: 12 },
+  captionDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF18",
+    borderRadius: radii.card,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#FFFFFF33",
+  },
+  captionText: {
+    color: "#FFFFFFEE",
+    fontSize: 14,
+    flex: 1,
+    paddingRight: 10,
+  },
+  captionPlaceholder: {
+    color: "#FFFFFF99",
+    fontSize: 14,
+    fontStyle: "italic",
+    flex: 1,
+    paddingRight: 10,
+  },
+  captionEditHint: {
+    color: colors.pinkSoft,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  captionInput: {
+    backgroundColor: "#FFFFFFEE",
+    borderRadius: radii.card,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 60,
+    fontSize: 14,
+    color: "#222",
+  },
+  captionEditRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+    justifyContent: "flex-end",
+  },
+  captionCancel: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    backgroundColor: "#FFFFFF22",
+    borderWidth: 1,
+    borderColor: "#FFFFFF55",
+  },
+  captionCancelText: { color: "#FFFFFFEE", fontWeight: "700", fontSize: 13 },
+  captionSave: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    minWidth: 72,
+    alignItems: "center",
+  },
+  captionSaveText: { color: colors.primaryDeep, fontWeight: "800", fontSize: 13 },
 });
