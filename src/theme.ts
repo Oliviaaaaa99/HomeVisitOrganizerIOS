@@ -18,6 +18,9 @@ export const colors = {
   pinkSoft: "#FCE7F3",      // pale pink background
   pinkDeep: "#DB2777",      // pressed / accent text
 
+  blueSoft: "#E3EEFF",      // pale blue used for list-card backgrounds
+  blueBorder: "#CFE0FA",    // hairline that pairs with blueSoft
+
   // Text
   textPrimary: "#3D2A5A",   // deep purple-tinted near-black
   textSecondary: "#7B6E8E",

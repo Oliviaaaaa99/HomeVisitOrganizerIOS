@@ -410,9 +410,11 @@ const styles = StyleSheet.create({
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.blueSoft,
     borderRadius: radii.card,
     padding: 16,
+    borderWidth: 1,
+    borderColor: colors.blueBorder,
     ...shadow.card,
   },
   cardRow: {
@@ -423,7 +425,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgAlt,
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
