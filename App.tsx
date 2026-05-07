@@ -1,6 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { setOnAuthExpired } from "./src/api";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
@@ -38,7 +39,7 @@ export default function App() {
   }, []);
 
   return (
-    <View style={styles.root}>
+    <GestureHandlerRootView style={styles.root}>
       <StatusBar style="auto" />
       {screen.name === "loading" && (
         <View style={styles.center}>
@@ -88,7 +89,7 @@ export default function App() {
           }
         />
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import {
-  archiveProperty,
+  deleteProperty,
   createNote,
   createUnit,
   deleteNote,
@@ -87,23 +87,23 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
     }
   }
 
-  async function handleArchive() {
+  async function handleDelete() {
     if (!data || busyAction) return;
     Alert.alert(
-      "Archive property?",
-      "It will move to status=archived and disappear from the default list.",
+      "Delete this property?",
+      "This permanently removes the property, its units, notes, and photos. It cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Archive",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
-            setBusyAction("archive");
+            setBusyAction("delete");
             try {
-              await archiveProperty(propertyId);
+              await deleteProperty(propertyId);
               onBack();
             } catch (err: any) {
-              Alert.alert("Archive failed", err?.message ?? String(err));
+              Alert.alert("Delete failed", err?.message ?? String(err));
             } finally {
               setBusyAction(null);
             }
@@ -184,7 +184,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
           onShortlist={() => handleStatus("shortlisted")}
           onReject={() => handleStatus("rejected")}
           onUnshortlist={() => handleStatus("toured")}
-          onArchive={handleArchive}
+          onDelete={handleDelete}
         />
 
         {/* Units */}
@@ -687,14 +687,14 @@ function ActionRow({
   onShortlist,
   onReject,
   onUnshortlist,
-  onArchive,
+  onDelete,
 }: {
   status: Property["status"];
   busy: string | null;
   onShortlist: () => void;
   onReject: () => void;
   onUnshortlist: () => void;
-  onArchive: () => void;
+  onDelete: () => void;
 }) {
   if (status === "archived") return null;
   return (
@@ -723,10 +723,10 @@ function ActionRow({
         />
       )}
       <ActionButton
-        text="Archive"
+        text="Delete"
         variant="danger"
-        loading={busy === "archive"}
-        onPress={onArchive}
+        loading={busy === "delete"}
+        onPress={onDelete}
       />
     </View>
   );

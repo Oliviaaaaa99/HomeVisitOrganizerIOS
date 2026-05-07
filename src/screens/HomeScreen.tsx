@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,7 +10,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { listProperties, type Property } from "../api";
+import { Swipeable } from "react-native-gesture-handler";
+import { deleteProperty, listProperties, type Property } from "../api";
 import { clearTokens } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
@@ -32,6 +33,41 @@ export default function HomeScreen({
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<KindFilter>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Track open Swipeables so we can close one if a new card is dragged.
+  const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
+
+  function confirmDelete(p: Property) {
+    Alert.alert(
+      "Delete this property?",
+      `${p.address}\n\nThis permanently removes the property, its units, notes, and photos.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeRefs.current.get(p.id)?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(p.id);
+            try {
+              await deleteProperty(p.id);
+              setItems((prev) => (prev ? prev.filter((x) => x.id !== p.id) : prev));
+              swipeRefs.current.delete(p.id);
+            } catch (err: any) {
+              Alert.alert("Delete failed", err?.message ?? String(err));
+              swipeRefs.current.get(p.id)?.close();
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true, onDismiss: () => swipeRefs.current.get(p.id)?.close() },
+    );
+  }
 
   const load = useCallback(async () => {
     try {
@@ -160,11 +196,45 @@ export default function HomeScreen({
           }
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           renderItem={({ item }) => (
+            <Swipeable
+              ref={(r) => {
+                if (r) swipeRefs.current.set(item.id, r);
+                else swipeRefs.current.delete(item.id);
+              }}
+              friction={2}
+              rightThreshold={40}
+              overshootRight={false}
+              renderRightActions={() => (
+                <View style={styles.swipeActionContainer}>
+                  <Pressable
+                    onPress={() => confirmDelete(item)}
+                    style={({ pressed }) => [
+                      styles.swipeDelete,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    {deletingId === item.id ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.swipeDeleteText}>Delete</Text>
+                    )}
+                  </Pressable>
+                </View>
+              )}
+              onSwipeableWillOpen={() => {
+                // Close any other open row when this one opens.
+                swipeRefs.current.forEach((ref, id) => {
+                  if (id !== item.id) ref?.close();
+                });
+              }}
+            >
             <Pressable
               onPress={() => onOpenProperty(item.id)}
+              disabled={deletingId === item.id}
               style={({ pressed }) => [
                 styles.card,
                 pressed && { transform: [{ scale: 0.98 }] },
+                deletingId === item.id && { opacity: 0.5 },
               ]}
             >
               <View pointerEvents="none" style={styles.sparkleCluster}>
@@ -193,6 +263,7 @@ export default function HomeScreen({
                 <Text style={styles.chevron}>›</Text>
               </View>
             </Pressable>
+            </Swipeable>
           )}
         />
       )}
@@ -417,6 +488,25 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
+  swipeActionContainer: {
+    justifyContent: "center",
+    paddingLeft: 8,
+  },
+  swipeDelete: {
+    backgroundColor: "#E11D48",
+    width: 88,
+    height: "100%",
+    borderRadius: radii.card,
+    justifyContent: "center",
+    alignItems: "center",
+    ...shadow.card,
+  },
+  swipeDeleteText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: radii.card,

@@ -356,7 +356,8 @@ export async function deleteNote(noteId: string): Promise<void> {
   if (!res.ok) throw new Error(`${res.status} delete note: ${await res.text()}`);
 }
 
-export async function archiveProperty(id: string): Promise<void> {
+export async function deleteProperty(id: string): Promise<void> {
+  // Hard delete: backend removes property + units + notes + media rows.
   // DELETE returns 204 with no body — bypass authed() so we don't try to JSON-parse empty.
   const access = await loadAccess();
   if (!access) throw new Error("not signed in");
@@ -365,6 +366,6 @@ export async function archiveProperty(id: string): Promise<void> {
     headers: { Authorization: `Bearer ${access}` },
   });
   if (!res.ok) {
-    throw new Error(`${res.status} archive: ${await res.text()}`);
+    throw new Error(`${res.status} delete: ${await res.text()}`);
   }
 }
