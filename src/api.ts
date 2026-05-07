@@ -210,6 +210,35 @@ export async function createUnit(
   });
 }
 
+export type UpdateUnitInput = {
+  unit_label?: string; // "" clears
+  unit_type?: string;
+  price_cents?: number;
+  sqft?: number;
+  beds?: number;
+  baths?: number;
+};
+
+export async function updateUnit(
+  unitId: string,
+  input: UpdateUnitInput,
+): Promise<Unit> {
+  return authed<Unit>(`${API.PROPERTY}/v1/units/${unitId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteUnit(unitId: string): Promise<void> {
+  const access = await loadAccess();
+  if (!access) throw new Error("not signed in");
+  const res = await fetch(`${API.PROPERTY}/v1/units/${unitId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  if (!res.ok) throw new Error(`${res.status} delete unit: ${await res.text()}`);
+}
+
 export async function createNote(
   propertyId: string,
   body: string,
@@ -218,6 +247,26 @@ export async function createNote(
     method: "POST",
     body: JSON.stringify({ body }),
   });
+}
+
+export async function updateNote(
+  noteId: string,
+  body: string,
+): Promise<Note> {
+  return authed<Note>(`${API.PROPERTY}/v1/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+  const access = await loadAccess();
+  if (!access) throw new Error("not signed in");
+  const res = await fetch(`${API.PROPERTY}/v1/notes/${noteId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  if (!res.ok) throw new Error(`${res.status} delete note: ${await res.text()}`);
 }
 
 export async function archiveProperty(id: string): Promise<void> {
