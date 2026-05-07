@@ -131,11 +131,25 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
     <View style={styles.container}>
       <LinearGradient colors={colors.gradientHeader} style={styles.header}>
         <View style={styles.topNavRow}>
-          <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
-            <Text style={styles.backText}>‹ Back</Text>
+          <Pressable
+            onPress={onBack}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.navPillSecondary,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.navPillSecondaryText}>‹ Back</Text>
           </Pressable>
-          <Pressable onPress={onEdit} hitSlop={10} style={styles.editBtn}>
-            <Text style={styles.editText}>Edit</Text>
+          <Pressable
+            onPress={onEdit}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.navPillPrimary,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.navPillPrimaryText}>Edit</Text>
           </Pressable>
         </View>
         <Text style={styles.address}>{data.address}</Text>
@@ -786,10 +800,36 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  backBtn: { paddingVertical: 6, paddingRight: 16 },
-  backText: { color: colors.primaryDeep, fontSize: 16, fontWeight: "600" },
-  editBtn: { paddingVertical: 6, paddingLeft: 16 },
-  editText: { color: colors.primaryDeep, fontSize: 16, fontWeight: "700" },
+  // Secondary nav pill (Back/Cancel — outline + soft fill)
+  navPillSecondary: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: "#FFFFFFB3",
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  navPillSecondaryText: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  // Primary nav pill (Edit/Save — filled)
+  navPillPrimary: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryDeep,
+  },
+  navPillPrimaryText: {
+    color: colors.textInverse,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
   address: {
     fontSize: 26,
     fontWeight: "800",

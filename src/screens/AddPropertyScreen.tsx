@@ -174,19 +174,28 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
     <View style={styles.container}>
       <LinearGradient colors={colors.gradientHeader} style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={onCancel} hitSlop={10}>
-            <Text style={styles.cancelText}>Cancel</Text>
+          <Pressable
+            onPress={onCancel}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.navPillSecondary,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.navPillSecondaryText}>Cancel</Text>
           </Pressable>
           <Text style={styles.headerTitle}>New property</Text>
-          <Pressable onPress={handleSave} disabled={busy} hitSlop={10}>
-            <Text
-              style={[
-                styles.saveText,
-                (busy || !address.trim()) && styles.saveDisabled,
-              ]}
-            >
-              Save
-            </Text>
+          <Pressable
+            onPress={handleSave}
+            disabled={busy || !address.trim()}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.navPillPrimary,
+              (busy || !address.trim()) && styles.navPillDisabled,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.navPillPrimaryText}>Save</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -473,10 +482,39 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: "500" },
   headerTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
-  saveText: { color: colors.primaryDeep, fontSize: 15, fontWeight: "700" },
-  saveDisabled: { color: colors.textMuted },
+  navPillSecondary: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: "#FFFFFFB3",
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  navPillSecondaryText: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  navPillPrimary: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryDeep,
+  },
+  navPillPrimaryText: {
+    color: colors.textInverse,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  navPillDisabled: {
+    backgroundColor: colors.borderSoft,
+    borderColor: colors.borderSoft,
+  },
 
   scroll: { flex: 1 },
   content: { padding: 22, paddingBottom: 80 },

@@ -78,6 +78,9 @@ export default function HomeScreen({
               <Text style={styles.title}>Properties</Text>
               <Text style={styles.titleEmoji}>🏠</Text>
             </View>
+            {items.length > 0 ? (
+              <Text style={styles.subtitle}>{summarize(items)}</Text>
+            ) : null}
           </View>
           <Pressable
             onPress={handleSignOut}
@@ -124,14 +127,21 @@ export default function HomeScreen({
               ]}
             >
               <View style={styles.cardRow}>
-                <Text style={styles.address} numberOfLines={2}>
-                  {item.address}
-                </Text>
+                <View style={styles.kindBadge}>
+                  <Text style={styles.kindEmoji}>
+                    {KIND_EMOJI[item.kind] ?? "🏠"}
+                  </Text>
+                </View>
+                <View style={styles.cardMain}>
+                  <Text style={styles.address} numberOfLines={2}>
+                    {item.address}
+                  </Text>
+                  <View style={styles.badges}>
+                    <Pill text={item.kind} />
+                    <Pill text={item.status} />
+                  </View>
+                </View>
                 <Text style={styles.chevron}>›</Text>
-              </View>
-              <View style={styles.badges}>
-                <Pill text={item.kind} />
-                <Pill text={item.status} />
               </View>
             </Pressable>
           )}
@@ -166,6 +176,23 @@ function Pill({ text }: { text: string }) {
     </View>
   );
 }
+
+// Build a one-liner like "3 properties · 2 shortlisted · 1 rejected".
+// Statuses with zero count are skipped; toured is implicit since it's the
+// default and would clutter the header for users who haven't categorized yet.
+function summarize(items: Property[]): string {
+  const counts: Record<string, number> = {};
+  for (const p of items) counts[p.status] = (counts[p.status] ?? 0) + 1;
+  const parts: string[] = [`${items.length} ${items.length === 1 ? "property" : "properties"}`];
+  if (counts.shortlisted) parts.push(`${counts.shortlisted} shortlisted`);
+  if (counts.rejected) parts.push(`${counts.rejected} rejected`);
+  return parts.join(" · ");
+}
+
+const KIND_EMOJI: Record<string, string> = {
+  rental: "🛋️",
+  for_sale: "🔑",
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
@@ -210,6 +237,13 @@ const styles = StyleSheet.create({
     // Slight nudge to optically center with the heavy title baseline
     marginTop: 2,
   },
+  subtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 6,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
   signOutBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -249,25 +283,34 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.card,
-    padding: 18,
+    padding: 16,
     ...shadow.card,
   },
   cardRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
+  kindBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.bgAlt,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  kindEmoji: { fontSize: 22 },
+  cardMain: { flex: 1 },
   address: {
-    flex: 1,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "600",
     color: colors.textPrimary,
-    lineHeight: 23,
+    lineHeight: 22,
   },
-  chevron: { fontSize: 24, color: colors.primary, marginLeft: 8 },
-  badges: { flexDirection: "row", marginTop: 12, gap: 8 },
-  pill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radii.pill },
-  pillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  chevron: { fontSize: 24, color: colors.primary, marginLeft: 6 },
+  badges: { flexDirection: "row", marginTop: 8, gap: 6 },
+  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill },
+  pillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 
   fab: {
     position: "absolute",
