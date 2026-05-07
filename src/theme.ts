@@ -18,6 +18,10 @@ export const colors = {
   pinkSoft: "#FCE7F3",      // pale pink background
   pinkDeep: "#DB2777",      // pressed / accent text
 
+  cardBg: "#DDD0FF",        // deeper milky lavender — more saturated, less candy
+  cardBorder: "#C4B5FD",    // saturated lavender hairline for that "edge"
+  cardAccent: "#1F1F2E",    // near-black left rail — Y2K coolness against the lavender
+
   // Text
   textPrimary: "#3D2A5A",   // deep purple-tinted near-black
   textSecondary: "#7B6E8E",

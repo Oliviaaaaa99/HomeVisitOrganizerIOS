@@ -167,6 +167,14 @@ export default function HomeScreen({
                 pressed && { transform: [{ scale: 0.98 }] },
               ]}
             >
+              <View pointerEvents="none" style={styles.sparkleCluster}>
+                <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95, color: "#F5E9E0" }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.75, color: "#E5E0EE" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.85, color: "#F5E9E0" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.75, color: "#E5E0EE" }]}>✦</Text>
+              </View>
               <View style={styles.cardRow}>
                 <View style={styles.kindBadge}>
                   <Text style={styles.kindEmoji}>
@@ -410,10 +418,30 @@ const styles = StyleSheet.create({
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardBg,
     borderRadius: radii.card,
     padding: 16,
+    paddingRight: 22,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.cardAccent,
+    overflow: "hidden",
     ...shadow.card,
+  },
+  sparkleCluster: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 60,
+    height: 36,
+  },
+  sparkle: {
+    position: "absolute",
+    fontWeight: "700",
+    textShadowColor: "#FFFFFFAA",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
   },
   cardRow: {
     flexDirection: "row",
@@ -423,7 +451,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgAlt,
+    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
