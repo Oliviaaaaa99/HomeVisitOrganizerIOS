@@ -1,17 +1,19 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { devSignIn } from "../api";
 import { saveTokens } from "../storage";
+import { colors, radii, shadow } from "../theme";
 
 type Props = { onSignedIn: () => void };
 
@@ -33,65 +35,138 @@ export default function SignInScreen({ onSignedIn }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <LinearGradient
+      colors={[colors.pinkSoft, colors.bgAlt, colors.primarySoft]}
+      style={styles.gradientBg}
     >
-      <View style={styles.inner}>
-        <Text style={styles.title}>Apartment Tour Tracker</Text>
-        <Text style={styles.subtitle}>Tier 1 walking-skeleton (dev sign-in)</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.inner}>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroEmoji}>🏡</Text>
+          </View>
 
-        <Text style={styles.label}>Identity (dev)</Text>
-        <TextInput
-          style={styles.input}
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={idToken}
-          onChangeText={setIdToken}
-          placeholder="external_id:email@example.com"
-        />
-        <Text style={styles.hint}>
-          format: anything-as-id:your@email — backend treats this as a fake Apple
-          id_token. Different ids create different users.
-        </Text>
+          <Text style={styles.title}>Apartment Tour Tracker</Text>
+          <Text style={styles.subtitle}>Tier 1 · dev sign-in</Text>
 
-        <TouchableOpacity
-          style={[styles.button, busy && styles.buttonDisabled]}
-          onPress={handleSignIn}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <View style={styles.card}>
+            <Text style={styles.label}>Identity (dev)</Text>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={idToken}
+              onChangeText={setIdToken}
+              placeholder="external_id:email@example.com"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text style={styles.hint}>
+              Format: anything-as-id:your@email — backend treats this as a fake
+              Apple id_token. Different ids create different users.
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={handleSignIn}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.buttonWrap,
+              pressed && { opacity: 0.85 },
+              busy && { opacity: 0.6 },
+            ]}
+          >
+            <LinearGradient
+              colors={colors.gradientButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.button}
+            >
+              {busy ? (
+                <ActivityIndicator color={colors.textInverse} />
+              ) : (
+                <Text style={styles.buttonText}>Sign in</Text>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  inner: { flex: 1, justifyContent: "center", padding: 24 },
-  title: { fontSize: 28, fontWeight: "700", marginBottom: 6, color: "#111" },
-  subtitle: { fontSize: 14, color: "#666", marginBottom: 36 },
-  label: { fontSize: 13, fontWeight: "600", color: "#444", marginBottom: 6 },
+  gradientBg: { flex: 1 },
+  inner: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  heroBadge: {
+    alignSelf: "center",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "#FFFFFFCC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    ...shadow.card,
+  },
+  heroEmoji: { fontSize: 36 },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 32,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 18,
+    ...shadow.card,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primaryDeep,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.input,
     padding: 12,
     fontSize: 16,
-    backgroundColor: "#fafafa",
+    color: colors.textPrimary,
+    backgroundColor: colors.bgAlt,
   },
-  hint: { fontSize: 12, color: "#888", marginTop: 8, marginBottom: 24 },
+  hint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 10,
+    lineHeight: 17,
+  },
+  buttonWrap: { marginTop: 20 },
   button: {
-    backgroundColor: "#0a7ea4",
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: radii.button,
     alignItems: "center",
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  buttonText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
 });

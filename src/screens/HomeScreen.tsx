@@ -1,16 +1,18 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { listProperties, type Property } from "../api";
 import { clearTokens } from "../storage";
+import { colors, radii, shadow } from "../theme";
 
 type Props = {
   onOpenProperty: (id: string) => void;
@@ -49,26 +51,37 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
   if (items === null) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.topbar}>
-        <Text style={styles.title}>My Properties</Text>
-        <TouchableOpacity onPress={handleSignOut}>
-          <Text style={styles.signOut}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
+      <LinearGradient
+        colors={colors.gradientHeader}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>My collection</Text>
+            <Text style={styles.title}>Properties</Text>
+          </View>
+          <Pressable onPress={handleSignOut} hitSlop={8}>
+            <Text style={styles.signOut}>Sign out</Text>
+          </Pressable>
+        </View>
+      </LinearGradient>
 
       {items.length === 0 ? (
         <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🌸</Text>
           <Text style={styles.emptyTitle}>No properties yet</Text>
           <Text style={styles.emptyHint}>
-            Add some via the backend (POST /v1/properties) — capture flow ships
-            in Tier 2.
+            Tour your first apartment to start tracking. Capture flow ships in
+            Tier 2.
           </Text>
         </View>
       ) : (
@@ -77,13 +90,20 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
           keyExtractor={(p) => p.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
           }
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
+            <Pressable
               onPress={() => onOpenProperty(item.id)}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && { transform: [{ scale: 0.98 }] },
+              ]}
             >
               <View style={styles.cardRow}>
                 <Text style={styles.address} numberOfLines={2}>
@@ -92,10 +112,10 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
                 <Text style={styles.chevron}>›</Text>
               </View>
               <View style={styles.badges}>
-                <Badge text={item.kind} />
-                <Badge text={item.status} kind="status" />
+                <Pill text={item.kind} />
+                <Pill text={item.status} />
               </View>
-            </TouchableOpacity>
+            </Pressable>
           )}
         />
       )}
@@ -103,68 +123,99 @@ export default function HomeScreen({ onOpenProperty, onSignedOut }: Props) {
   );
 }
 
-function Badge({
-  text,
-  kind,
-}: {
-  text: string;
-  kind?: "status";
-}) {
-  const palette: Record<string, { bg: string; fg: string }> = {
-    rental: { bg: "#e8f4ff", fg: "#0a5d8a" },
-    for_sale: { bg: "#fef3e8", fg: "#a55600" },
-    toured: { bg: "#f0f0f0", fg: "#333" },
-    shortlisted: { bg: "#e8f8ec", fg: "#1f7a3a" },
-    rejected: { bg: "#fdecec", fg: "#9a1f1f" },
-    archived: { bg: "#f0f0f0", fg: "#888" },
-  };
-  const c = palette[text] ?? { bg: "#eee", fg: "#333" };
+function Pill({ text }: { text: string }) {
+  const c = colors.pill[text] ?? { bg: colors.borderSoft, fg: colors.textSecondary };
   return (
-    <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <Text style={[styles.badgeText, { color: c.fg }]}>{text}</Text>
+    <View style={[styles.pill, { backgroundColor: c.bg }]}>
+      <Text style={[styles.pillText, { color: c.fg }]}>{text.replace("_", " ")}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fafafa" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  topbar: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ddd",
+  container: { flex: 1, backgroundColor: colors.bg },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.bg,
   },
-  title: { fontSize: 28, fontWeight: "700", color: "#111" },
-  signOut: { color: "#0a7ea4", fontSize: 15, paddingBottom: 4 },
-  empty: { padding: 32, alignItems: "center" },
-  emptyTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: "#444" },
-  emptyHint: { fontSize: 14, color: "#888", textAlign: "center" },
-  listContent: { padding: 16 },
-  sep: { height: 12 },
+  header: {
+    paddingTop: 64,
+    paddingHorizontal: 22,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerInner: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primaryDeep,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    opacity: 0.85,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    marginTop: 4,
+  },
+  signOut: {
+    color: colors.primaryDeep,
+    fontSize: 14,
+    fontWeight: "600",
+    paddingBottom: 6,
+  },
+  empty: {
+    flex: 1,
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyEmoji: { fontSize: 56, marginBottom: 12 },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: colors.textPrimary,
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  listContent: { padding: 18, paddingTop: 22 },
+  sep: { height: 14 },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 18,
+    ...shadow.card,
   },
   cardRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  address: { flex: 1, fontSize: 16, fontWeight: "500", color: "#111" },
-  chevron: { fontSize: 22, color: "#bbb", marginLeft: 8 },
-  badges: { flexDirection: "row", marginTop: 10, gap: 8 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  badgeText: { fontSize: 12, fontWeight: "600" },
+  address: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "600",
+    color: colors.textPrimary,
+    lineHeight: 23,
+  },
+  chevron: { fontSize: 24, color: colors.primary, marginLeft: 8 },
+  badges: { flexDirection: "row", marginTop: 12, gap: 8 },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+  },
+  pillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
 });

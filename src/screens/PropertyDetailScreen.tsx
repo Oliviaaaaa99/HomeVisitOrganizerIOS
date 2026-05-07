@@ -1,14 +1,16 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { getProperty, type PropertyDetail } from "../api";
+import { colors, radii, shadow } from "../theme";
 
 type Props = {
   propertyId: string;
@@ -37,41 +39,40 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
   if (!data) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.topbar}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+      <LinearGradient colors={colors.gradientHeader} style={styles.header}>
+        <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
           <Text style={styles.backText}>‹ Back</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
+        </Pressable>
         <Text style={styles.address}>{data.address}</Text>
-        <View style={styles.meta}>
-          <Text style={styles.metaItem}>{data.kind}</Text>
-          <Text style={styles.metaItem}>•</Text>
-          <Text style={styles.metaItem}>{data.status}</Text>
+        <View style={styles.metaRow}>
+          <Pill text={data.kind} />
+          <Pill text={data.status} />
           {data.latitude !== undefined && data.longitude !== undefined && (
-            <>
-              <Text style={styles.metaItem}>•</Text>
-              <Text style={styles.metaItem}>
-                {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
-              </Text>
-            </>
+            <Text style={styles.coords}>
+              {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
+            </Text>
           )}
         </View>
-
         {data.source_url ? (
           <Text style={styles.sourceUrl} numberOfLines={1}>
             {data.source_url}
           </Text>
         ) : null}
+      </LinearGradient>
 
-        <Section title={`Units (${data.units.length})`}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <Section title={`Units · ${data.units.length}`}>
           {data.units.length === 0 ? (
             <Text style={styles.empty}>No units</Text>
           ) : (
@@ -99,7 +100,7 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
           )}
         </Section>
 
-        <Section title={`Notes (${data.notes.length})`}>
+        <Section title={`Notes · ${data.notes.length}`}>
           {data.notes.length === 0 ? (
             <Text style={styles.empty}>No notes</Text>
           ) : (
@@ -133,53 +134,102 @@ function Section({
   );
 }
 
+function Pill({ text }: { text: string }) {
+  const c = colors.pill[text] ?? { bg: "#FFFFFFAA", fg: colors.primaryDeep };
+  return (
+    <View style={[styles.pill, { backgroundColor: c.bg }]}>
+      <Text style={[styles.pillText, { color: c.fg }]}>
+        {text.replace("_", " ")}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fafafa" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  topbar: {
-    paddingTop: 60,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ddd",
+  container: { flex: 1, backgroundColor: colors.bg },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.bg,
   },
-  backBtn: { padding: 8, alignSelf: "flex-start" },
-  backText: { color: "#0a7ea4", fontSize: 17 },
-  content: { padding: 20, paddingBottom: 60 },
-  address: { fontSize: 24, fontWeight: "700", color: "#111" },
-  meta: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
-  metaItem: { fontSize: 13, color: "#666" },
-  sourceUrl: { fontSize: 12, color: "#0a7ea4", marginTop: 8 },
-  section: { marginTop: 28 },
+  header: {
+    paddingTop: 56,
+    paddingHorizontal: 22,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  backBtn: { alignSelf: "flex-start", paddingVertical: 6, paddingRight: 16 },
+  backText: { color: colors.primaryDeep, fontSize: 16, fontWeight: "600" },
+  address: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    marginTop: 8,
+    lineHeight: 32,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  coords: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
+  },
+  sourceUrl: {
+    fontSize: 12,
+    color: colors.primaryDeep,
+    marginTop: 10,
+    opacity: 0.85,
+  },
+  scroll: { flex: 1 },
+  content: { padding: 18, paddingBottom: 60 },
+  section: { marginTop: 6, marginBottom: 18 },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#777",
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.primaryDeep,
     textTransform: "uppercase",
-    marginBottom: 10,
-    letterSpacing: 0.5,
+    marginBottom: 12,
+    letterSpacing: 0.8,
   },
   row: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    ...shadow.card,
   },
   rowMain: { flex: 1 },
-  rowTitle: { fontSize: 16, fontWeight: "600", color: "#111" },
-  rowSubtitle: { fontSize: 13, color: "#666", marginTop: 2 },
-  price: { fontSize: 16, fontWeight: "600", color: "#0a7ea4" },
-  note: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+  rowTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
+  rowSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 3,
   },
-  noteBody: { fontSize: 15, color: "#111", lineHeight: 22 },
-  noteTime: { fontSize: 11, color: "#999", marginTop: 6 },
-  empty: { fontSize: 13, color: "#999", fontStyle: "italic" },
+  price: { fontSize: 16, fontWeight: "700", color: colors.pinkDeep },
+  note: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 16,
+    marginBottom: 10,
+    ...shadow.card,
+  },
+  noteBody: { fontSize: 15, color: colors.textPrimary, lineHeight: 23 },
+  noteTime: { fontSize: 11, color: colors.textMuted, marginTop: 8 },
+  empty: { fontSize: 13, color: colors.textMuted, fontStyle: "italic" },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+  },
+  pillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
 });
