@@ -22,7 +22,7 @@ type Props = {
   reloadKey: number;
 };
 
-type KindFilter = "all" | "rental" | "for_sale";
+type FilterKey = "all" | "shortlisted" | "rental" | "for_sale";
 
 export default function HomeScreen({
   onOpenProperty,
@@ -32,7 +32,7 @@ export default function HomeScreen({
 }: Props) {
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<KindFilter>("all");
+  const [filter, setFilter] = useState<FilterKey>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
@@ -103,7 +103,11 @@ export default function HomeScreen({
   }
 
   const displayed =
-    filter === "all" ? items : items.filter((p) => p.kind === filter);
+    filter === "all"
+      ? items
+      : filter === "shortlisted"
+        ? items.filter((p) => p.status === "shortlisted")
+        : items.filter((p) => p.kind === filter);
 
   return (
     <View style={styles.container}>
@@ -146,6 +150,12 @@ export default function HomeScreen({
             count={items.length}
           />
           <FilterChip
+            label="★ Shortlisted"
+            active={filter === "shortlisted"}
+            onPress={() => setFilter("shortlisted")}
+            count={items.filter((p) => p.status === "shortlisted").length}
+          />
+          <FilterChip
             label="🛋️ Rentals"
             active={filter === "rental"}
             onPress={() => setFilter("rental")}
@@ -175,7 +185,13 @@ export default function HomeScreen({
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔎</Text>
           <Text style={styles.emptyTitle}>
-            No {filter === "rental" ? "rentals" : "for-sale properties"} yet
+            No{" "}
+            {filter === "rental"
+              ? "rentals"
+              : filter === "for_sale"
+                ? "for-sale properties"
+                : "shortlisted properties"}{" "}
+            yet
           </Text>
           <Text style={styles.emptyHint}>
             Switch back to <Text style={styles.emptyHintEm}>All</Text> or add
