@@ -113,10 +113,6 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
             ))
           )}
         </Section>
-
-        <Section title="Raw">
-          <Text style={styles.raw}>{JSON.stringify(data, null, 2)}</Text>
-        </Section>
       </ScrollView>
     </View>
   );
@@ -186,12 +182,4 @@ const styles = StyleSheet.create({
   noteBody: { fontSize: 15, color: "#111", lineHeight: 22 },
   noteTime: { fontSize: 11, color: "#999", marginTop: 6 },
   empty: { fontSize: 13, color: "#999", fontStyle: "italic" },
-  raw: {
-    fontFamily: "Menlo",
-    fontSize: 11,
-    color: "#444",
-    backgroundColor: "#f5f5f5",
-    padding: 12,
-    borderRadius: 8,
-  },
 });
