@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { createProperty } from "../api";
+import { createNote, createProperty, createUnit } from "../api";
 import { geocode, type GeocodingResult } from "../geocoding";
 import { colors, radii, shadow } from "../theme";
 
@@ -21,23 +21,44 @@ type Props = {
   onCreated: () => void;
 };
 
+const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
+  rental: ["studio", "1B", "2B", "3B"],
+  for_sale: ["condo", "townhouse", "sfh", "apartment"],
+} as const;
+
 export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
+  // Property fields
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<"rental" | "for_sale">("rental");
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [sourceUrl, setSourceUrl] = useState("");
+
+  // Optional unit fields
+  const [unitType, setUnitType] = useState<string>("");
+  const [unitLabel, setUnitLabel] = useState("");
+  const [priceDollars, setPriceDollars] = useState("");
+  const [sqft, setSqft] = useState("");
+  const [beds, setBeds] = useState("");
+  const [baths, setBaths] = useState("");
+
+  // Optional first note
+  const [noteText, setNoteText] = useState("");
+
   const [busy, setBusy] = useState(false);
 
-  // Geocoding suggestions state
+  // Geocoding suggestions
   const [suggestions, setSuggestions] = useState<GeocodingResult[]>([]);
   const [searching, setSearching] = useState(false);
-  // Once the user picks a suggestion, suppress further auto-search until they
-  // edit the address again.
   const [picked, setPicked] = useState(false);
   const reqId = useRef(0);
 
-  // Debounced lookup as user types.
+  // When kind flips, reset unit_type so we don't keep an invalid value.
+  useEffect(() => {
+    setUnitType("");
+  }, [kind]);
+
+  // Debounced address lookup
   useEffect(() => {
     if (picked) return;
     if (address.trim().length < 3) {
@@ -61,9 +82,8 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
 
   function handleAddressChange(text: string) {
     setAddress(text);
-    setPicked(false); // edited again → re-enable suggestions
+    setPicked(false);
   }
-
   function handlePickSuggestion(s: GeocodingResult) {
     setAddress(s.displayName);
     setLatitude(s.lat.toString());
@@ -71,7 +91,6 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
     setSuggestions([]);
     setPicked(true);
   }
-
   function handleClearCoords() {
     setLatitude("");
     setLongitude("");
@@ -84,6 +103,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
       return;
     }
     setBusy(true);
+    const warnings: string[] = [];
     try {
       const lat = latitude.trim() ? Number(latitude) : undefined;
       const lng = longitude.trim() ? Number(longitude) : undefined;
@@ -93,14 +113,54 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
       if (lng !== undefined && Number.isNaN(lng)) {
         throw new Error("longitude is not a number");
       }
-      await createProperty({
+
+      // 1. Create property (the only required step)
+      const property = await createProperty({
         address: address.trim(),
         kind,
         latitude: lat,
         longitude: lng,
         source_url: sourceUrl.trim() || undefined,
       });
-      onCreated();
+
+      // 2. Optional unit — only if a unit_type was picked
+      if (unitType.trim()) {
+        try {
+          const priceCents = priceDollars.trim()
+            ? Math.round(Number(priceDollars) * 100)
+            : undefined;
+          if (priceCents !== undefined && Number.isNaN(priceCents)) {
+            throw new Error("price is not a number");
+          }
+          await createUnit(property.id, {
+            unit_type: unitType,
+            unit_label: unitLabel.trim() || undefined,
+            price_cents: priceCents,
+            sqft: sqft.trim() ? parseInt(sqft, 10) : undefined,
+            beds: beds.trim() ? parseInt(beds, 10) : undefined,
+            baths: baths.trim() ? Number(baths) : undefined,
+          });
+        } catch (err: any) {
+          warnings.push(`Unit failed: ${err?.message ?? String(err)}`);
+        }
+      }
+
+      // 3. Optional note
+      if (noteText.trim()) {
+        try {
+          await createNote(property.id, noteText.trim());
+        } catch (err: any) {
+          warnings.push(`Note failed: ${err?.message ?? String(err)}`);
+        }
+      }
+
+      if (warnings.length > 0) {
+        Alert.alert("Property saved with warnings", warnings.join("\n\n"), [
+          { text: "OK", onPress: onCreated },
+        ]);
+      } else {
+        onCreated();
+      }
     } catch (err: any) {
       Alert.alert("Save failed", err?.message ?? String(err));
     } finally {
@@ -141,6 +201,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          {/* === Property === */}
           <Field label="Address *">
             <TextInput
               style={styles.input}
@@ -152,15 +213,12 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
               autoCorrect={false}
               multiline
             />
-
-            {/* search status / suggestions */}
             {searching ? (
               <View style={styles.searchHint}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.searchHintText}>Looking up…</Text>
               </View>
             ) : null}
-
             {!picked && suggestions.length > 0 ? (
               <View style={styles.suggestions}>
                 {suggestions.map((s, i) => (
@@ -183,7 +241,6 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
                 ))}
               </View>
             ) : null}
-
             {hasCoords && picked ? (
               <View style={styles.autoFilledBanner}>
                 <Text style={styles.autoFilledText}>
@@ -225,10 +282,134 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             />
           </Field>
 
+          {/* === Optional Unit === */}
+          <View style={styles.divider}>
+            <Text style={styles.dividerText}>Unit details (optional)</Text>
+          </View>
+
+          <Field label="Unit type">
+            <View style={styles.chipRow}>
+              {UNIT_TYPES[kind].map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setUnitType(unitType === t ? "" : t)}
+                  style={[
+                    styles.typeChip,
+                    unitType === t && styles.typeChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.typeChipText,
+                      unitType === t && styles.typeChipTextActive,
+                    ]}
+                  >
+                    {t}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.hint}>
+              {unitType
+                ? "A unit will be created with the values below."
+                : "Tap a type if you want to create a unit. Skip to add later."}
+            </Text>
+          </Field>
+
+          {unitType ? (
+            <>
+              <View style={styles.row2}>
+                <View style={{ flex: 1 }}>
+                  <Field label="Unit label">
+                    <TextInput
+                      style={styles.input}
+                      value={unitLabel}
+                      onChangeText={setUnitLabel}
+                      placeholder="Apt 12A"
+                      placeholderTextColor={colors.textMuted}
+                    />
+                  </Field>
+                </View>
+                <View style={{ width: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label={
+                      kind === "rental" ? "Price ($/mo)" : "Price ($)"
+                    }
+                  >
+                    <TextInput
+                      style={styles.input}
+                      value={priceDollars}
+                      onChangeText={setPriceDollars}
+                      placeholder={kind === "rental" ? "1800" : "1750000"}
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </Field>
+                </View>
+              </View>
+              <View style={styles.row3}>
+                <View style={{ flex: 1 }}>
+                  <Field label="Beds">
+                    <TextInput
+                      style={styles.input}
+                      value={beds}
+                      onChangeText={setBeds}
+                      placeholder="2"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="number-pad"
+                    />
+                  </Field>
+                </View>
+                <View style={{ width: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Field label="Baths">
+                    <TextInput
+                      style={styles.input}
+                      value={baths}
+                      onChangeText={setBaths}
+                      placeholder="2.0"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="decimal-pad"
+                    />
+                  </Field>
+                </View>
+                <View style={{ width: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Field label="Sqft">
+                    <TextInput
+                      style={styles.input}
+                      value={sqft}
+                      onChangeText={setSqft}
+                      placeholder="1240"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="number-pad"
+                    />
+                  </Field>
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {/* === Optional first note === */}
+          <View style={styles.divider}>
+            <Text style={styles.dividerText}>First note (optional)</Text>
+          </View>
+
+          <Field label="What did you think?">
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              value={noteText}
+              onChangeText={setNoteText}
+              placeholder="采光很好；HOA 偏高；地铁 5 分钟…"
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+          </Field>
+
           <Text style={styles.footHint}>
-            Status defaults to{" "}
-            <Text style={styles.footHintEm}>toured</Text>. You can change it on
-            the detail page after creating.
+            Status defaults to <Text style={styles.footHintEm}>toured</Text>.
+            You can change it on the detail page after creating.
           </Text>
 
           {busy ? (
@@ -296,6 +477,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
   saveText: { color: colors.primaryDeep, fontSize: 15, fontWeight: "700" },
   saveDisabled: { color: colors.textMuted },
+
   scroll: { flex: 1 },
   content: { padding: 22, paddingBottom: 80 },
   field: { marginBottom: 18 },
@@ -307,6 +489,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 8,
   },
+  hint: { fontSize: 11, color: colors.textMuted, marginTop: 8, lineHeight: 16 },
   input: {
     borderWidth: 1,
     borderColor: colors.borderSoft,
@@ -317,6 +500,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     ...shadow.card,
   },
+  noteInput: { minHeight: 90, textAlignVertical: "top" },
+
   searchHint: {
     flexDirection: "row",
     alignItems: "center",
@@ -342,11 +527,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.textPrimary,
   },
-  suggestionSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
+  suggestionSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   autoFilledBanner: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -357,13 +538,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     borderRadius: radii.input,
   },
-  autoFilledText: { fontSize: 12, color: colors.primaryDeep, fontWeight: "600", flex: 1 },
+  autoFilledText: {
+    fontSize: 12,
+    color: colors.primaryDeep,
+    fontWeight: "600",
+    flex: 1,
+  },
   autoFilledClear: {
     fontSize: 12,
     color: colors.pinkDeep,
     fontWeight: "700",
     paddingLeft: 12,
   },
+
   segmented: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -380,6 +567,35 @@ const styles = StyleSheet.create({
   segmentBtnActive: { backgroundColor: colors.primarySoft },
   segmentText: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
   segmentTextActive: { color: colors.primaryDeep },
+
+  divider: { marginTop: 14, marginBottom: 14 },
+  dividerText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.pinkDeep,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  typeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  typeChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  typeChipText: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  typeChipTextActive: { color: colors.primaryDeep },
+
+  row2: { flexDirection: "row" },
+  row3: { flexDirection: "row" },
+
   footHint: {
     fontSize: 12,
     color: colors.textMuted,

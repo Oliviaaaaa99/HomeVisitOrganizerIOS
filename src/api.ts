@@ -120,6 +120,36 @@ export async function updatePropertyStatus(
   });
 }
 
+export type CreateUnitInput = {
+  unit_type: string;
+  unit_label?: string;
+  price_cents?: number;
+  sqft?: number;
+  beds?: number;
+  baths?: number;
+  available_from?: string; // YYYY-MM-DD
+};
+
+export async function createUnit(
+  propertyId: string,
+  input: CreateUnitInput,
+): Promise<Unit> {
+  return authed<Unit>(`${API.PROPERTY}/v1/properties/${propertyId}/units`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function createNote(
+  propertyId: string,
+  body: string,
+): Promise<Note> {
+  return authed<Note>(`${API.PROPERTY}/v1/properties/${propertyId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
 export async function archiveProperty(id: string): Promise<void> {
   // DELETE returns 204 with no body — bypass authed() so we don't try to JSON-parse empty.
   const access = await loadAccess();

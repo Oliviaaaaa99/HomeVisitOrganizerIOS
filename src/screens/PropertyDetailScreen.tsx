@@ -8,10 +8,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import {
   archiveProperty,
+  createNote,
+  createUnit,
   getProperty,
   updatePropertyStatus,
   type Property,
@@ -24,9 +27,16 @@ type Props = {
   onBack: () => void;
 };
 
+const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
+  rental: ["studio", "1B", "2B", "3B"],
+  for_sale: ["condo", "townhouse", "sfh", "apartment"],
+} as const;
+
 export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
   const [data, setData] = useState<PropertyDetail | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [showAddUnit, setShowAddUnit] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +53,15 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
       cancelled = true;
     };
   }, [propertyId, onBack]);
+
+  async function reload() {
+    try {
+      const detail = await getProperty(propertyId);
+      setData(detail);
+    } catch (err: any) {
+      Alert.alert("Reload failed", err?.message ?? String(err));
+    }
+  }
 
   async function handleStatus(next: Property["status"]) {
     if (!data || data.status === next || busyAction) return;
@@ -127,6 +146,7 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <ActionRow
           status={data.status}
@@ -137,8 +157,36 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
           onArchive={handleArchive}
         />
 
-        <Section title={`Units · ${data.units.length}`}>
-          {data.units.length === 0 ? (
+        {/* Units */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              Units · {data.units.length}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setShowAddUnit((v) => !v);
+                setShowAddNote(false);
+              }}
+              hitSlop={6}
+            >
+              <Text style={styles.addLink}>
+                {showAddUnit ? "− Cancel" : "+ Add unit"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {showAddUnit ? (
+            <AddUnitForm
+              kind={data.kind}
+              onSaved={async () => {
+                setShowAddUnit(false);
+                await reload();
+              }}
+            />
+          ) : null}
+
+          {data.units.length === 0 && !showAddUnit ? (
             <Text style={styles.empty}>No units</Text>
           ) : (
             data.units.map((u) => (
@@ -166,10 +214,37 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
               </View>
             ))
           )}
-        </Section>
+        </View>
 
-        <Section title={`Notes · ${data.notes.length}`}>
-          {data.notes.length === 0 ? (
+        {/* Notes */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              Notes · {data.notes.length}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setShowAddNote((v) => !v);
+                setShowAddUnit(false);
+              }}
+              hitSlop={6}
+            >
+              <Text style={styles.addLink}>
+                {showAddNote ? "− Cancel" : "+ Add note"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {showAddNote ? (
+            <AddNoteForm
+              onSaved={async () => {
+                setShowAddNote(false);
+                await reload();
+              }}
+            />
+          ) : null}
+
+          {data.notes.length === 0 && !showAddNote ? (
             <Text style={styles.empty}>No notes</Text>
           ) : (
             data.notes.map((n) => (
@@ -181,10 +256,203 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
               </View>
             ))
           )}
-        </Section>
+        </View>
       </ScrollView>
     </View>
   );
+
+  // helpers using the closure (propertyId, etc.)
+  function AddUnitForm({
+    kind,
+    onSaved,
+  }: {
+    kind: "rental" | "for_sale";
+    onSaved: () => void;
+  }) {
+    const [unitType, setUnitType] = useState<string>("");
+    const [unitLabel, setUnitLabel] = useState("");
+    const [priceDollars, setPriceDollars] = useState("");
+    const [beds, setBeds] = useState("");
+    const [baths, setBaths] = useState("");
+    const [sqft, setSqft] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    async function save() {
+      if (!unitType) {
+        Alert.alert("Pick a unit type");
+        return;
+      }
+      setSaving(true);
+      try {
+        const priceCents = priceDollars.trim()
+          ? Math.round(Number(priceDollars) * 100)
+          : undefined;
+        if (priceCents !== undefined && Number.isNaN(priceCents)) {
+          throw new Error("price is not a number");
+        }
+        await createUnit(propertyId, {
+          unit_type: unitType,
+          unit_label: unitLabel.trim() || undefined,
+          price_cents: priceCents,
+          beds: beds.trim() ? parseInt(beds, 10) : undefined,
+          baths: baths.trim() ? Number(baths) : undefined,
+          sqft: sqft.trim() ? parseInt(sqft, 10) : undefined,
+        });
+        onSaved();
+      } catch (err: any) {
+        Alert.alert("Save failed", err?.message ?? String(err));
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    return (
+      <View style={styles.inlineCard}>
+        <View style={styles.chipRow}>
+          {UNIT_TYPES[kind].map((t) => (
+            <Pressable
+              key={t}
+              onPress={() => setUnitType(unitType === t ? "" : t)}
+              style={[
+                styles.typeChip,
+                unitType === t && styles.typeChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.typeChipText,
+                  unitType === t && styles.typeChipTextActive,
+                ]}
+              >
+                {t}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.formRow2}>
+          <TextInput
+            style={[styles.formInput, { flex: 1 }]}
+            value={unitLabel}
+            onChangeText={setUnitLabel}
+            placeholder="Unit label (Apt 12A)"
+            placeholderTextColor={colors.textMuted}
+          />
+          <TextInput
+            style={[styles.formInput, { flex: 1 }]}
+            value={priceDollars}
+            onChangeText={setPriceDollars}
+            placeholder={kind === "rental" ? "Price /mo" : "Price"}
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+          />
+        </View>
+        <View style={styles.formRow3}>
+          <TextInput
+            style={[styles.formInput, { flex: 1 }]}
+            value={beds}
+            onChangeText={setBeds}
+            placeholder="Beds"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="number-pad"
+          />
+          <TextInput
+            style={[styles.formInput, { flex: 1 }]}
+            value={baths}
+            onChangeText={setBaths}
+            placeholder="Baths"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+          />
+          <TextInput
+            style={[styles.formInput, { flex: 1 }]}
+            value={sqft}
+            onChangeText={setSqft}
+            placeholder="Sqft"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="number-pad"
+          />
+        </View>
+        <Pressable
+          onPress={save}
+          disabled={saving || !unitType}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            (saving || !unitType) && { opacity: 0.5 },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <LinearGradient
+            colors={colors.gradientButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.saveBtnInner}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.textInverse} />
+            ) : (
+              <Text style={styles.saveBtnText}>Save unit</Text>
+            )}
+          </LinearGradient>
+        </Pressable>
+      </View>
+    );
+  }
+
+  function AddNoteForm({ onSaved }: { onSaved: () => void }) {
+    const [body, setBody] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    async function save() {
+      if (!body.trim()) {
+        Alert.alert("Note can't be empty");
+        return;
+      }
+      setSaving(true);
+      try {
+        await createNote(propertyId, body.trim());
+        onSaved();
+      } catch (err: any) {
+        Alert.alert("Save failed", err?.message ?? String(err));
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    return (
+      <View style={styles.inlineCard}>
+        <TextInput
+          style={[styles.formInput, styles.noteFormInput]}
+          value={body}
+          onChangeText={setBody}
+          placeholder="What did you think? 采光、噪音、HOA、通勤…"
+          placeholderTextColor={colors.textMuted}
+          multiline
+        />
+        <Pressable
+          onPress={save}
+          disabled={saving || !body.trim()}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            (saving || !body.trim()) && { opacity: 0.5 },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <LinearGradient
+            colors={colors.gradientButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.saveBtnInner}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.textInverse} />
+            ) : (
+              <Text style={styles.saveBtnText}>Save note</Text>
+            )}
+          </LinearGradient>
+        </Pressable>
+      </View>
+    );
+  }
 }
 
 function ActionRow({
@@ -202,10 +470,7 @@ function ActionRow({
   onUnshortlist: () => void;
   onArchive: () => void;
 }) {
-  // Show buttons that make sense given the current status.
-  // archived is terminal; from there the only way back is the backend.
   if (status === "archived") return null;
-
   return (
     <View style={styles.actionRow}>
       {status === "shortlisted" ? (
@@ -282,21 +547,6 @@ function ActionButton({
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
 function Pill({ text }: { text: string }) {
   const c = colors.pill[text] ?? { bg: "#FFFFFFAA", fg: colors.primaryDeep };
   return (
@@ -368,14 +618,73 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 13, fontWeight: "700" },
 
   section: { marginTop: 6, marginBottom: 18 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 12,
     fontWeight: "800",
     color: colors.primaryDeep,
     textTransform: "uppercase",
-    marginBottom: 12,
     letterSpacing: 0.8,
   },
+  addLink: {
+    fontSize: 13,
+    color: colors.pinkDeep,
+    fontWeight: "700",
+  },
+
+  inlineCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 14,
+    marginBottom: 10,
+    ...shadow.card,
+  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  typeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radii.pill,
+    backgroundColor: colors.bgAlt,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  typeChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  typeChipText: { fontSize: 13, color: colors.textSecondary, fontWeight: "600" },
+  typeChipTextActive: { color: colors.primaryDeep },
+  formRow2: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  formRow3: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  formInput: {
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.input,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.textPrimary,
+    backgroundColor: colors.bgAlt,
+  },
+  noteFormInput: { minHeight: 90, marginBottom: 12, textAlignVertical: "top" },
+  saveBtn: { borderRadius: radii.button, overflow: "hidden" },
+  saveBtnInner: {
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: radii.button,
+  },
+  saveBtnText: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+
   row: {
     backgroundColor: colors.surface,
     borderRadius: radii.card,
