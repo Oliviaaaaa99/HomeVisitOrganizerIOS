@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { createProperty } from "../api";
+import { geocode, type GeocodingResult } from "../geocoding";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -23,10 +24,59 @@ type Props = {
 export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<"rental" | "for_sale">("rental");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [latitude, setLatitude] = useState<string>("");
+  const [longitude, setLongitude] = useState<string>("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Geocoding suggestions state
+  const [suggestions, setSuggestions] = useState<GeocodingResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  // Once the user picks a suggestion, suppress further auto-search until they
+  // edit the address again.
+  const [picked, setPicked] = useState(false);
+  const reqId = useRef(0);
+
+  // Debounced lookup as user types.
+  useEffect(() => {
+    if (picked) return;
+    if (address.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const myId = ++reqId.current;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await geocode(address);
+        if (reqId.current === myId) setSuggestions(results);
+      } catch {
+        if (reqId.current === myId) setSuggestions([]);
+      } finally {
+        if (reqId.current === myId) setSearching(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [address, picked]);
+
+  function handleAddressChange(text: string) {
+    setAddress(text);
+    setPicked(false); // edited again → re-enable suggestions
+  }
+
+  function handlePickSuggestion(s: GeocodingResult) {
+    setAddress(s.displayName);
+    setLatitude(s.lat.toString());
+    setLongitude(s.lon.toString());
+    setSuggestions([]);
+    setPicked(true);
+  }
+
+  function handleClearCoords() {
+    setLatitude("");
+    setLongitude("");
+    setPicked(false);
+  }
 
   async function handleSave() {
     if (!address.trim()) {
@@ -57,6 +107,8 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
       setBusy(false);
     }
   }
+
+  const hasCoords = latitude.trim() !== "" && longitude.trim() !== "";
 
   return (
     <View style={styles.container}>
@@ -93,13 +145,56 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             <TextInput
               style={styles.input}
               value={address}
-              onChangeText={setAddress}
-              placeholder="123 Main St, San Francisco, CA"
+              onChangeText={handleAddressChange}
+              placeholder="Type a street address..."
               placeholderTextColor={colors.textMuted}
               autoCapitalize="words"
               autoCorrect={false}
               multiline
             />
+
+            {/* search status / suggestions */}
+            {searching ? (
+              <View style={styles.searchHint}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.searchHintText}>Looking up…</Text>
+              </View>
+            ) : null}
+
+            {!picked && suggestions.length > 0 ? (
+              <View style={styles.suggestions}>
+                {suggestions.map((s, i) => (
+                  <Pressable
+                    key={`${s.lat},${s.lon},${i}`}
+                    onPress={() => handlePickSuggestion(s)}
+                    style={({ pressed }) => [
+                      styles.suggestion,
+                      i < suggestions.length - 1 && styles.suggestionBorder,
+                      pressed && { backgroundColor: colors.primarySoft },
+                    ]}
+                  >
+                    <Text style={styles.suggestionMain} numberOfLines={2}>
+                      {s.displayName.split(",").slice(0, 2).join(",")}
+                    </Text>
+                    <Text style={styles.suggestionSub} numberOfLines={1}>
+                      {s.displayName.split(",").slice(2).join(",").trim()}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {hasCoords && picked ? (
+              <View style={styles.autoFilledBanner}>
+                <Text style={styles.autoFilledText}>
+                  ✓ Auto-filled coordinates: {Number(latitude).toFixed(4)},{" "}
+                  {Number(longitude).toFixed(4)}
+                </Text>
+                <Pressable onPress={handleClearCoords} hitSlop={6}>
+                  <Text style={styles.autoFilledClear}>Clear</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </Field>
 
           <Field label="Kind">
@@ -116,34 +211,6 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
               />
             </View>
           </Field>
-
-          <View style={styles.row2}>
-            <View style={{ flex: 1 }}>
-              <Field label="Latitude">
-                <TextInput
-                  style={styles.input}
-                  value={latitude}
-                  onChangeText={setLatitude}
-                  placeholder="37.7749"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="decimal-pad"
-                />
-              </Field>
-            </View>
-            <View style={{ width: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Field label="Longitude">
-                <TextInput
-                  style={styles.input}
-                  value={longitude}
-                  onChangeText={setLongitude}
-                  placeholder="-122.4194"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="decimal-pad"
-                />
-              </Field>
-            </View>
-          </View>
 
           <Field label="Source URL">
             <TextInput
@@ -226,11 +293,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: "500" },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary },
   saveText: { color: colors.primaryDeep, fontSize: 15, fontWeight: "700" },
   saveDisabled: { color: colors.textMuted },
   scroll: { flex: 1 },
@@ -254,6 +317,53 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     ...shadow.card,
   },
+  searchHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  searchHintText: { fontSize: 12, color: colors.textMuted },
+  suggestions: {
+    marginTop: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radii.input,
+    overflow: "hidden",
+    ...shadow.card,
+  },
+  suggestion: { padding: 14 },
+  suggestionBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderSoft,
+  },
+  suggestionMain: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  suggestionSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  autoFilledBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.input,
+  },
+  autoFilledText: { fontSize: 12, color: colors.primaryDeep, fontWeight: "600", flex: 1 },
+  autoFilledClear: {
+    fontSize: 12,
+    color: colors.pinkDeep,
+    fontWeight: "700",
+    paddingLeft: 12,
+  },
   segmented: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -270,7 +380,6 @@ const styles = StyleSheet.create({
   segmentBtnActive: { backgroundColor: colors.primarySoft },
   segmentText: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
   segmentTextActive: { color: colors.primaryDeep },
-  row2: { flexDirection: "row" },
   footHint: {
     fontSize: 12,
     color: colors.textMuted,
