@@ -6,6 +6,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -22,7 +23,8 @@ type Props = {
   reloadKey: number;
 };
 
-type FilterKey = "all" | "shortlisted" | "rental" | "for_sale";
+type KindFilter = "any" | "rental" | "for_sale";
+type StatusFilter = "any" | "shortlisted" | "toured" | "rejected";
 
 export default function HomeScreen({
   onOpenProperty,
@@ -32,7 +34,8 @@ export default function HomeScreen({
 }: Props) {
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [kindFilter, setKindFilter] = useState<KindFilter>("any");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("any");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
@@ -102,12 +105,19 @@ export default function HomeScreen({
     );
   }
 
-  const displayed =
-    filter === "all"
-      ? items
-      : filter === "shortlisted"
-        ? items.filter((p) => p.status === "shortlisted")
-        : items.filter((p) => p.kind === filter);
+  const matchKind = (p: Property, k: KindFilter) =>
+    k === "any" || p.kind === k;
+  const matchStatus = (p: Property, s: StatusFilter) =>
+    s === "any" || p.status === s;
+  const displayed = items.filter(
+    (p) => matchKind(p, kindFilter) && matchStatus(p, statusFilter),
+  );
+  // Counts on each chip reflect what you'd see if you picked it, given the
+  // OTHER row's current filter — so the badges stay honest.
+  const kindCount = (k: KindFilter) =>
+    items.filter((p) => matchKind(p, k) && matchStatus(p, statusFilter)).length;
+  const statusCount = (s: StatusFilter) =>
+    items.filter((p) => matchKind(p, kindFilter) && matchStatus(p, s)).length;
 
   return (
     <View style={styles.container}>
@@ -140,33 +150,64 @@ export default function HomeScreen({
         </View>
       </LinearGradient>
 
-      {/* Filter chips — only show when there's something to filter */}
+      {/* Filter rows — kind × status, AND'd together. Each row scrolls
+          horizontally so adding more chips later doesn't overflow. */}
       {items.length > 0 ? (
-        <View style={styles.filterRow}>
-          <FilterChip
-            label="All"
-            active={filter === "all"}
-            onPress={() => setFilter("all")}
-            count={items.length}
-          />
-          <FilterChip
-            label="★ Shortlisted"
-            active={filter === "shortlisted"}
-            onPress={() => setFilter("shortlisted")}
-            count={items.filter((p) => p.status === "shortlisted").length}
-          />
-          <FilterChip
-            label="🛋️ Rentals"
-            active={filter === "rental"}
-            onPress={() => setFilter("rental")}
-            count={items.filter((p) => p.kind === "rental").length}
-          />
-          <FilterChip
-            label="🔑 For sale"
-            active={filter === "for_sale"}
-            onPress={() => setFilter("for_sale")}
-            count={items.filter((p) => p.kind === "for_sale").length}
-          />
+        <View style={styles.filterRows}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            <FilterChip
+              label="Any kind"
+              active={kindFilter === "any"}
+              onPress={() => setKindFilter("any")}
+              count={kindCount("any")}
+            />
+            <FilterChip
+              label="🛋️ Rentals"
+              active={kindFilter === "rental"}
+              onPress={() => setKindFilter("rental")}
+              count={kindCount("rental")}
+            />
+            <FilterChip
+              label="🔑 For sale"
+              active={kindFilter === "for_sale"}
+              onPress={() => setKindFilter("for_sale")}
+              count={kindCount("for_sale")}
+            />
+          </ScrollView>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            <FilterChip
+              label="Any status"
+              active={statusFilter === "any"}
+              onPress={() => setStatusFilter("any")}
+              count={statusCount("any")}
+            />
+            <FilterChip
+              label="★ Shortlisted"
+              active={statusFilter === "shortlisted"}
+              onPress={() => setStatusFilter("shortlisted")}
+              count={statusCount("shortlisted")}
+            />
+            <FilterChip
+              label="✓ Toured"
+              active={statusFilter === "toured"}
+              onPress={() => setStatusFilter("toured")}
+              count={statusCount("toured")}
+            />
+            <FilterChip
+              label="✕ Rejected"
+              active={statusFilter === "rejected"}
+              onPress={() => setStatusFilter("rejected")}
+              count={statusCount("rejected")}
+            />
+          </ScrollView>
         </View>
       ) : null}
 
@@ -184,18 +225,10 @@ export default function HomeScreen({
       ) : displayed.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔎</Text>
-          <Text style={styles.emptyTitle}>
-            No{" "}
-            {filter === "rental"
-              ? "rentals"
-              : filter === "for_sale"
-                ? "for-sale properties"
-                : "shortlisted properties"}{" "}
-            yet
-          </Text>
+          <Text style={styles.emptyTitle}>Nothing matches</Text>
           <Text style={styles.emptyHint}>
-            Switch back to <Text style={styles.emptyHintEm}>All</Text> or add
-            one with <Text style={styles.emptyHintEm}>+ Add</Text>.
+            Loosen the filters above or add one with{" "}
+            <Text style={styles.emptyHintEm}>+ Add</Text>.
           </Text>
         </View>
       ) : (
@@ -455,11 +488,16 @@ const styles = StyleSheet.create({
   },
   emptyHintEm: { color: colors.primaryDeep, fontWeight: "700" },
 
+  filterRows: {
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 6,
+  },
   filterRow: {
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingTop: 6,
     paddingBottom: 6,
   },
   filterChip: {
