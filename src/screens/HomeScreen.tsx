@@ -202,7 +202,7 @@ export default function HomeScreen({
           <Pressable style={styles.sheetCard} onPress={() => {}}>
             <Text style={styles.sheetEyebrow}>Signed in as</Text>
             <Text style={styles.sheetEmail} numberOfLines={1}>
-              {userEmail ?? "—"}
+              {userEmail ?? "(sign out and back in to refresh)"}
             </Text>
             <Pressable
               onPress={() => {
