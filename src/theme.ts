@@ -18,8 +18,9 @@ export const colors = {
   pinkSoft: "#FCE7F3",      // pale pink background
   pinkDeep: "#DB2777",      // pressed / accent text
 
-  blueSoft: "#E3EEFF",      // pale blue used for list-card backgrounds
-  blueBorder: "#CFE0FA",    // hairline that pairs with blueSoft
+  cardBg: "#EAE2FF",        // milky lavender — sweet but a touch cooler than pure pastel
+  cardBorder: "#C4B5FD",    // saturated lavender hairline for that "edge"
+  cardAccent: "#7C3AED",    // deep purple — used for the left rail of property cards
 
   // Text
   textPrimary: "#3D2A5A",   // deep purple-tinted near-black

@@ -410,11 +410,13 @@ const styles = StyleSheet.create({
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
   card: {
-    backgroundColor: colors.blueSoft,
+    backgroundColor: colors.cardBg,
     borderRadius: radii.card,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.blueBorder,
+    borderColor: colors.cardBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.cardAccent,
     ...shadow.card,
   },
   cardRow: {
