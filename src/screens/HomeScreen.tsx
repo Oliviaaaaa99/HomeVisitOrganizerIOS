@@ -348,6 +348,7 @@ export default function HomeScreen({
               disabled={deletingId === item.id}
               style={({ pressed }) => [
                 styles.card,
+                item.status === "shortlisted" && styles.cardShortlisted,
                 pressed && { transform: [{ scale: 0.98 }] },
                 deletingId === item.id && { opacity: 0.5 },
               ]}
@@ -665,6 +666,9 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.cardAccent,
     overflow: "hidden",
     ...shadow.card,
+  },
+  cardShortlisted: {
+    borderLeftColor: "#d674c7",
   },
   sparkleCluster: {
     position: "absolute",
