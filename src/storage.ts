@@ -19,6 +19,10 @@ export async function loadAccess(): Promise<string | null> {
   return AsyncStorage.getItem(KEY_ACCESS);
 }
 
+export async function loadRefresh(): Promise<string | null> {
+  return AsyncStorage.getItem(KEY_REFRESH);
+}
+
 export async function loadUserId(): Promise<string | null> {
   return AsyncStorage.getItem(KEY_USER_ID);
 }

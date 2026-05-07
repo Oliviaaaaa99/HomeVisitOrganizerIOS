@@ -1,6 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { setOnAuthExpired } from "./src/api";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -27,6 +28,13 @@ export default function App() {
       const access = await loadAccess();
       setScreen(access ? { name: "home" } : { name: "sign-in" });
     })();
+  }, []);
+
+  // The API layer calls this when both access AND refresh have failed.
+  // We just kick the user back to sign-in; the screens already alert with
+  // "session expired" so the user knows what happened.
+  useEffect(() => {
+    setOnAuthExpired(() => setScreen({ name: "sign-in" }));
   }, []);
 
   return (

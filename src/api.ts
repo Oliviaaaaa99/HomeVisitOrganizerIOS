@@ -1,7 +1,18 @@
 // Tiny fetch wrapper. Auto-attaches the JWT, throws on non-2xx with the
 // server's body so you can see real errors in the dev tools.
+//
+// On 401 we transparently try the refresh token once. If that also fails we
+// clear local tokens and notify whoever registered an "auth expired"
+// callback (App.tsx routes back to the sign-in screen).
 import { API } from "./config";
-import { loadAccess } from "./storage";
+import { clearTokens, loadAccess, loadRefresh, saveTokens } from "./storage";
+
+// Allows App.tsx to react to permanent auth failure without coupling the
+// API layer to the routing layer.
+let onAuthExpired: (() => void) | null = null;
+export function setOnAuthExpired(cb: () => void) {
+  onAuthExpired = cb;
+}
 
 export type Property = {
   id: string;
@@ -66,13 +77,54 @@ async function fetchJSON<T>(url: string, opts: RequestInit = {}): Promise<T> {
 
 async function authed<T>(url: string, opts: RequestInit = {}): Promise<T> {
   const access = await loadAccess();
-  if (!access) throw new Error("not signed in");
-  return fetchJSON<T>(url, {
-    ...opts,
-    headers: {
-      ...(opts.headers || {}),
-      Authorization: `Bearer ${access}`,
-    },
+  if (!access) {
+    if (onAuthExpired) onAuthExpired();
+    throw new Error("not signed in");
+  }
+
+  const fire = async (token: string) =>
+    fetch(url, {
+      ...opts,
+      headers: {
+        "Content-Type": "application/json",
+        ...(opts.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+  let res = await fire(access);
+
+  if (res.status === 401) {
+    // Try the refresh token exactly once.
+    const refreshTok = await loadRefresh();
+    if (refreshTok) {
+      try {
+        const fresh = await refreshSession(refreshTok);
+        await saveTokens(fresh.access_token, fresh.refresh_token, fresh.user_id);
+        res = await fire(fresh.access_token);
+      } catch {
+        await clearTokens();
+        if (onAuthExpired) onAuthExpired();
+        throw new Error("session expired — please sign in again");
+      }
+    } else {
+      await clearTokens();
+      if (onAuthExpired) onAuthExpired();
+      throw new Error("session expired — please sign in again");
+    }
+  }
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`${res.status} ${url}: ${text || "(no body)"}`);
+  }
+  return text ? JSON.parse(text) : ({} as T);
+}
+
+async function refreshSession(refreshToken: string): Promise<AuthResponse> {
+  return fetchJSON<AuthResponse>(`${API.USER}/v1/auth/refresh`, {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: refreshToken }),
   });
 }
 
