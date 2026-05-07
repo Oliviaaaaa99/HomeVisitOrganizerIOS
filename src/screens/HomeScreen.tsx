@@ -167,7 +167,14 @@ export default function HomeScreen({
                 pressed && { transform: [{ scale: 0.98 }] },
               ]}
             >
-              <Text style={styles.cardSparkle}>✦</Text>
+              <View pointerEvents="none" style={styles.sparkleCluster}>
+                <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95 }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.7 }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.85 }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.65 }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.8 }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.7 }]}>✦</Text>
+              </View>
               <View style={styles.cardRow}>
                 <View style={styles.kindBadge}>
                   <Text style={styles.kindEmoji}>
@@ -422,13 +429,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...shadow.card,
   },
-  cardSparkle: {
+  sparkleCluster: {
     position: "absolute",
-    top: 8,
-    right: 12,
-    fontSize: 14,
+    top: 0,
+    right: 0,
+    width: 60,
+    height: 36,
+  },
+  sparkle: {
+    position: "absolute",
     color: colors.pinkDeep,
-    opacity: 0.9,
+    fontWeight: "700",
   },
   cardRow: {
     flexDirection: "row",
