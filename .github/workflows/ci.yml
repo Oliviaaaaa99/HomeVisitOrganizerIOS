@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # Typecheck is the main guardrail — most iOS bugs we've hit so far would
+  # have been caught here (missing imports, prop mismatches, refactor drift).
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: tsc --noEmit
+        run: npx tsc --noEmit
+
+  # expo-doctor flags SDK / native-module version drift that would otherwise
+  # only show up at runtime on device.
+  expo-doctor:
+    name: expo-doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: expo-doctor
+        # `--fix-dependencies` would auto-edit package.json — we don't want
+        # that in CI, just the report. Non-zero exit means real issues.
+        run: npx --yes expo-doctor
