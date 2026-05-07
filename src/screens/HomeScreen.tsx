@@ -21,6 +21,8 @@ type Props = {
   reloadKey: number;
 };
 
+type KindFilter = "all" | "rental" | "for_sale";
+
 export default function HomeScreen({
   onOpenProperty,
   onAddProperty,
@@ -29,6 +31,7 @@ export default function HomeScreen({
 }: Props) {
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<KindFilter>("all");
 
   const load = useCallback(async () => {
     try {
@@ -63,6 +66,9 @@ export default function HomeScreen({
     );
   }
 
+  const displayed =
+    filter === "all" ? items : items.filter((p) => p.kind === filter);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -94,6 +100,30 @@ export default function HomeScreen({
         </View>
       </LinearGradient>
 
+      {/* Filter chips — only show when there's something to filter */}
+      {items.length > 0 ? (
+        <View style={styles.filterRow}>
+          <FilterChip
+            label="All"
+            active={filter === "all"}
+            onPress={() => setFilter("all")}
+            count={items.length}
+          />
+          <FilterChip
+            label="🛋️ Rentals"
+            active={filter === "rental"}
+            onPress={() => setFilter("rental")}
+            count={items.filter((p) => p.kind === "rental").length}
+          />
+          <FilterChip
+            label="🔑 For sale"
+            active={filter === "for_sale"}
+            onPress={() => setFilter("for_sale")}
+            count={items.filter((p) => p.kind === "for_sale").length}
+          />
+        </View>
+      ) : null}
+
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🌸</Text>
@@ -105,9 +135,20 @@ export default function HomeScreen({
             2.
           </Text>
         </View>
+      ) : displayed.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🔎</Text>
+          <Text style={styles.emptyTitle}>
+            No {filter === "rental" ? "rentals" : "for-sale properties"} yet
+          </Text>
+          <Text style={styles.emptyHint}>
+            Switch back to <Text style={styles.emptyHintEm}>All</Text> or add
+            one with <Text style={styles.emptyHintEm}>+ Add</Text>.
+          </Text>
+        </View>
       ) : (
         <FlatList
-          data={items}
+          data={displayed}
           keyExtractor={(p) => p.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -163,6 +204,46 @@ export default function HomeScreen({
         </LinearGradient>
       </Pressable>
     </View>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onPress,
+  count,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  count: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.filterChip,
+        active && styles.filterChipActive,
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Text
+        style={[
+          styles.filterChipLabel,
+          active && styles.filterChipLabelActive,
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.filterChipCount,
+          active && styles.filterChipCountActive,
+        ]}
+      >
+        {count}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -278,7 +359,55 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emptyHintEm: { color: colors.primaryDeep, fontWeight: "700" },
-  listContent: { padding: 18, paddingTop: 22, paddingBottom: 100 },
+
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDeep,
+  },
+  filterChipLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  filterChipLabelActive: {
+    color: colors.textInverse,
+  },
+  filterChipCount: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textMuted,
+    backgroundColor: colors.bgAlt,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+    overflow: "hidden",
+    minWidth: 20,
+    textAlign: "center",
+  },
+  filterChipCountActive: {
+    color: colors.primaryDeep,
+    backgroundColor: "#FFFFFFCC",
+  },
+
+  listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
   card: {
     backgroundColor: colors.surface,
