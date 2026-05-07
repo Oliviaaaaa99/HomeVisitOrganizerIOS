@@ -25,6 +25,7 @@ import { colors, radii, shadow } from "../theme";
 type Props = {
   propertyId: string;
   onBack: () => void;
+  onEdit: () => void;
 };
 
 const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
@@ -32,7 +33,7 @@ const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
   for_sale: ["condo", "townhouse", "sfh", "apartment"],
 } as const;
 
-export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
+export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Props) {
   const [data, setData] = useState<PropertyDetail | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [showAddUnit, setShowAddUnit] = useState(false);
@@ -120,9 +121,14 @@ export default function PropertyDetailScreen({ propertyId, onBack }: Props) {
   return (
     <View style={styles.container}>
       <LinearGradient colors={colors.gradientHeader} style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
+        <View style={styles.topNavRow}>
+          <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </Pressable>
+          <Pressable onPress={onEdit} hitSlop={10} style={styles.editBtn}>
+            <Text style={styles.editText}>Edit</Text>
+          </Pressable>
+        </View>
         <Text style={styles.address}>{data.address}</Text>
         <View style={styles.metaRow}>
           <Pill text={data.kind} />
@@ -573,8 +579,15 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  backBtn: { alignSelf: "flex-start", paddingVertical: 6, paddingRight: 16 },
+  topNavRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  backBtn: { paddingVertical: 6, paddingRight: 16 },
   backText: { color: colors.primaryDeep, fontSize: 16, fontWeight: "600" },
+  editBtn: { paddingVertical: 6, paddingLeft: 16 },
+  editText: { color: colors.primaryDeep, fontSize: 16, fontWeight: "700" },
   address: {
     fontSize: 26,
     fontWeight: "800",

@@ -120,6 +120,24 @@ export async function updatePropertyStatus(
   });
 }
 
+export type UpdatePropertyInput = {
+  address?: string;
+  kind?: "rental" | "for_sale";
+  source_url?: string; // pass "" to clear
+  latitude?: number;
+  longitude?: number;
+};
+
+export async function updateProperty(
+  id: string,
+  input: UpdatePropertyInput,
+): Promise<Property> {
+  return authed<Property>(`${API.PROPERTY}/v1/properties/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export type CreateUnitInput = {
   unit_type: string;
   unit_label?: string;

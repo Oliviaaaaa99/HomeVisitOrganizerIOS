@@ -2,27 +2,26 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
+import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import PropertyDetailScreen from "./src/screens/PropertyDetailScreen";
 import SignInScreen from "./src/screens/SignInScreen";
 import { loadAccess } from "./src/storage";
 
-// Tier 1 keeps routing absurdly simple — four screens, one state machine.
-// Adding expo-router can wait until we have ≥6 screens or deep links.
+// Tier 1 keeps routing absurdly simple — five screens, one state machine.
+// Adding expo-router can wait until we have ≥7 screens or deep links.
 type Screen =
   | { name: "loading" }
   | { name: "sign-in" }
   | { name: "home" }
   | { name: "add" }
-  | { name: "detail"; propertyId: string };
+  | { name: "detail"; propertyId: string }
+  | { name: "edit"; propertyId: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
-  // Bumped whenever a downstream action (create, status change, archive) needs
-  // Home to refetch on its next mount.
   const [reloadKey, setReloadKey] = useState(0);
 
-  // On boot, peek at AsyncStorage. If we already have a JWT, skip sign-in.
   useEffect(() => {
     (async () => {
       const access = await loadAccess();
@@ -65,6 +64,20 @@ export default function App() {
             setReloadKey((k) => k + 1);
             setScreen({ name: "home" });
           }}
+          onEdit={() =>
+            setScreen({ name: "edit", propertyId: screen.propertyId })
+          }
+        />
+      )}
+      {screen.name === "edit" && (
+        <EditPropertyScreen
+          propertyId={screen.propertyId}
+          onCancel={() =>
+            setScreen({ name: "detail", propertyId: screen.propertyId })
+          }
+          onSaved={() =>
+            setScreen({ name: "detail", propertyId: screen.propertyId })
+          }
         />
       )}
     </View>
