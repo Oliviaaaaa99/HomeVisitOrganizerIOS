@@ -74,10 +74,19 @@ export default function HomeScreen({
         <View style={styles.headerInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.eyebrow}>My collection</Text>
-            <Text style={styles.title}>Properties</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>Properties</Text>
+              <Text style={styles.titleEmoji}>🏠</Text>
+            </View>
           </View>
-          <Pressable onPress={handleSignOut} hitSlop={8}>
-            <Text style={styles.signOut}>Sign out</Text>
+          <Pressable
+            onPress={handleSignOut}
+            style={({ pressed }) => [
+              styles.signOutBtn,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.signOutText}>Sign out</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -185,17 +194,35 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     opacity: 0.85,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 4,
+  },
   title: {
     fontSize: 32,
     fontWeight: "800",
     color: colors.textPrimary,
-    marginTop: 4,
   },
-  signOut: {
+  titleEmoji: {
+    fontSize: 28,
+    // Slight nudge to optically center with the heavy title baseline
+    marginTop: 2,
+  },
+  signOutBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: "#FFFFFFB3",
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  signOutText: {
     color: colors.primaryDeep,
-    fontSize: 14,
-    fontWeight: "600",
-    paddingBottom: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   empty: {
     flex: 1,
