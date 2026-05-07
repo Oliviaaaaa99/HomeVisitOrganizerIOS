@@ -168,12 +168,12 @@ export default function HomeScreen({
               ]}
             >
               <View pointerEvents="none" style={styles.sparkleCluster}>
-                <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95 }]}>✦</Text>
-                <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.7 }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.85 }]}>✦</Text>
-                <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.65 }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.8 }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.7 }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95, color: "#F5E9E0" }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.75, color: "#E5E0EE" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
+                <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.85, color: "#F5E9E0" }]}>✧</Text>
+                <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.75, color: "#E5E0EE" }]}>✦</Text>
               </View>
               <View style={styles.cardRow}>
                 <View style={styles.kindBadge}>
@@ -438,8 +438,10 @@ const styles = StyleSheet.create({
   },
   sparkle: {
     position: "absolute",
-    color: "#A8A8C0",
     fontWeight: "700",
+    textShadowColor: "#FFFFFFAA",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
   },
   cardRow: {
     flexDirection: "row",
