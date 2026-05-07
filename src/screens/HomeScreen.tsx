@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   cardShortlisted: {
-    borderLeftColor: colors.pinkDeep,
+    borderLeftColor: colors.pink,
   },
   sparkleCluster: {
     position: "absolute",
