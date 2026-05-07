@@ -167,6 +167,7 @@ export default function HomeScreen({
                 pressed && { transform: [{ scale: 0.98 }] },
               ]}
             >
+              <Text style={styles.cardSparkle}>✦</Text>
               <View style={styles.cardRow}>
                 <View style={styles.kindBadge}>
                   <Text style={styles.kindEmoji}>
@@ -413,11 +414,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderRadius: radii.card,
     padding: 16,
+    paddingRight: 22,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderLeftWidth: 4,
     borderLeftColor: colors.cardAccent,
+    overflow: "hidden",
     ...shadow.card,
+  },
+  cardSparkle: {
+    position: "absolute",
+    top: 8,
+    right: 12,
+    fontSize: 14,
+    color: colors.cardAccent,
+    opacity: 0.85,
   },
   cardRow: {
     flexDirection: "row",
