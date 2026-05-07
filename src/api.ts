@@ -159,11 +159,48 @@ export type Me = {
   id: string;
   provider: string;
   email_hash?: string;
+  avatar_url?: string;
   created_at: string;
 };
 
 export async function getMe(): Promise<Me> {
   return authed<Me>(`${API.USER}/v1/users/me`);
+}
+
+export type AvatarPresign = {
+  s3_key: string;
+  url: string;
+  expires_at: string;
+};
+
+export async function presignAvatar(): Promise<AvatarPresign> {
+  return authed<AvatarPresign>(`${API.USER}/v1/users/me/avatar:presign`, {
+    method: "POST",
+  });
+}
+
+export async function commitAvatar(
+  s3Key: string,
+): Promise<{ s3_key: string; avatar_url: string }> {
+  return authed<{ s3_key: string; avatar_url: string }>(
+    `${API.USER}/v1/users/me/avatar:commit`,
+    {
+      method: "POST",
+      body: JSON.stringify({ s3_key: s3Key }),
+    },
+  );
+}
+
+export async function deleteAvatar(): Promise<void> {
+  const access = await loadAccess();
+  if (!access) throw new Error("not signed in");
+  const res = await fetch(`${API.USER}/v1/users/me/avatar`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} delete avatar: ${await res.text()}`);
+  }
 }
 
 // --- properties ---

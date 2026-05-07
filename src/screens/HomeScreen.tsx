@@ -1,9 +1,11 @@
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,8 +16,12 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import {
+  commitAvatar,
+  deleteAvatar,
   deleteProperty,
+  getMe,
   listProperties,
+  presignAvatar,
   updatePropertyStatus,
   type Property,
 } from "../api";
@@ -45,13 +51,71 @@ export default function HomeScreen({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
 
   useEffect(() => {
     loadUserEmail().then(setUserEmail);
+    getMe()
+      .then((me) => setAvatarUrl(me.avatar_url ?? null))
+      .catch(() => {
+        // If /me fails (offline, expired), avatar stays null and we fall back
+        // to the initial-letter avatar. Other API calls will surface the
+        // real auth error.
+      });
   }, []);
+
+  async function handleChangeAvatar() {
+    if (avatarBusy) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(
+        "Photo permission needed",
+        "Enable in Settings → Privacy → Photos.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    setAvatarBusy(true);
+    try {
+      const presigned = await presignAvatar();
+      const blob = await (await fetch(result.assets[0].uri)).blob();
+      const put = await fetch(presigned.url, { method: "PUT", body: blob });
+      if (!put.ok) {
+        throw new Error(`upload failed: HTTP ${put.status}`);
+      }
+      const committed = await commitAvatar(presigned.s3_key);
+      // Cache-bust so RN's image cache picks up the new bytes if a previous
+      // avatar at the same URL was already fetched.
+      setAvatarUrl(`${committed.avatar_url}?v=${Date.now()}`);
+    } catch (err: any) {
+      Alert.alert("Avatar upload failed", err?.message ?? String(err));
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    if (avatarBusy) return;
+    setAvatarBusy(true);
+    try {
+      await deleteAvatar();
+      setAvatarUrl(null);
+    } catch (err: any) {
+      Alert.alert("Couldn't remove avatar", err?.message ?? String(err));
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
 
   async function toggleShortlist(p: Property) {
     if (togglingId) return;
@@ -184,7 +248,11 @@ export default function HomeScreen({
             ]}
             accessibilityLabel="Account"
           >
-            <Text style={styles.avatarInitial}>{initialFor(userEmail)}</Text>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarInitial}>{initialFor(userEmail)}</Text>
+            )}
           </Pressable>
         </View>
       </LinearGradient>
@@ -200,6 +268,43 @@ export default function HomeScreen({
           onPress={() => setAccountSheetOpen(false)}
         >
           <Pressable style={styles.sheetCard} onPress={() => {}}>
+            <View style={styles.sheetAvatarBlock}>
+              <View style={styles.sheetAvatar}>
+                {avatarBusy ? (
+                  <ActivityIndicator color={colors.primaryDeep} />
+                ) : avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.sheetAvatarImg} />
+                ) : (
+                  <Text style={styles.sheetAvatarInitial}>
+                    {initialFor(userEmail)}
+                  </Text>
+                )}
+              </View>
+              <Pressable
+                onPress={handleChangeAvatar}
+                disabled={avatarBusy}
+                style={({ pressed }) => [
+                  styles.sheetAvatarBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={styles.sheetAvatarBtnText}>
+                  {avatarUrl ? "Change avatar" : "Add avatar"}
+                </Text>
+              </Pressable>
+              {avatarUrl ? (
+                <Pressable
+                  onPress={handleRemoveAvatar}
+                  disabled={avatarBusy}
+                  style={({ pressed }) => [
+                    styles.sheetAvatarRemove,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={styles.sheetAvatarRemoveText}>Remove</Text>
+                </Pressable>
+              ) : null}
+            </View>
             <Text style={styles.sheetEyebrow}>Signed in as</Text>
             <Text style={styles.sheetEmail} numberOfLines={1}>
               {userEmail ?? "(sign out and back in to refresh)"}
@@ -574,6 +679,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
   },
   avatarInitial: {
     color: colors.primaryDeep,
@@ -594,6 +704,51 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     ...shadow.card,
+  },
+  sheetAvatarBlock: {
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  sheetAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  sheetAvatarImg: { width: "100%", height: "100%" },
+  sheetAvatarInitial: {
+    color: colors.primaryDeep,
+    fontSize: 32,
+    fontWeight: "800",
+  },
+  sheetAvatarBtn: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  sheetAvatarBtnText: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sheetAvatarRemove: {
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  sheetAvatarRemoveText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
   },
   sheetEyebrow: {
     fontSize: 11,
