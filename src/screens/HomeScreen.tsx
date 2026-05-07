@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { listProperties, type Property } from "../api";
+import { archiveProperty, listProperties, type Property } from "../api";
 import { clearTokens } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
@@ -32,6 +32,33 @@ export default function HomeScreen({
   const [items, setItems] = useState<Property[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<KindFilter>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  function confirmDelete(p: Property) {
+    Alert.alert(
+      "Delete this property?",
+      p.address,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(p.id);
+            try {
+              await archiveProperty(p.id);
+              setItems((prev) => (prev ? prev.filter((x) => x.id !== p.id) : prev));
+            } catch (err: any) {
+              Alert.alert("Delete failed", err?.message ?? String(err));
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  }
 
   const load = useCallback(async () => {
     try {
@@ -162,9 +189,13 @@ export default function HomeScreen({
           renderItem={({ item }) => (
             <Pressable
               onPress={() => onOpenProperty(item.id)}
+              onLongPress={() => confirmDelete(item)}
+              delayLongPress={400}
+              disabled={deletingId === item.id}
               style={({ pressed }) => [
                 styles.card,
                 pressed && { transform: [{ scale: 0.98 }] },
+                deletingId === item.id && { opacity: 0.5 },
               ]}
             >
               <View pointerEvents="none" style={styles.sparkleCluster}>
