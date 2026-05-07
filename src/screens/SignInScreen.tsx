@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { devSignIn } from "../api";
-import { saveTokens } from "../storage";
+import { saveTokens, saveUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
 type Props = { onSignedIn: () => void };
@@ -24,8 +24,15 @@ export default function SignInScreen({ onSignedIn }: Props) {
   async function handleSignIn() {
     setBusy(true);
     try {
-      const resp = await devSignIn(idToken.trim());
+      const trimmed = idToken.trim();
+      const resp = await devSignIn(trimmed);
       await saveTokens(resp.access_token, resp.refresh_token, resp.user_id);
+      // Backend stores email_hash, so we stash the email locally for display.
+      // Dev id_token format is "<external_id>:<email>"; later providers will
+      // surface the email via OAuth userinfo and we'll save that instead.
+      const colonIdx = trimmed.indexOf(":");
+      const email = colonIdx > -1 ? trimmed.slice(colonIdx + 1) : trimmed;
+      if (email) await saveUserEmail(email);
       onSignedIn();
     } catch (err: any) {
       Alert.alert("Sign in failed", err?.message ?? String(err));

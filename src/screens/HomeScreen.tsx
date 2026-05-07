@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,7 +19,7 @@ import {
   updatePropertyStatus,
   type Property,
 } from "../api";
-import { clearTokens } from "../storage";
+import { clearTokens, loadUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -43,8 +44,14 @@ export default function HomeScreen({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("any");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
+
+  useEffect(() => {
+    loadUserEmail().then(setUserEmail);
+  }, []);
 
   async function toggleShortlist(p: Property) {
     if (togglingId) return;
@@ -170,16 +177,48 @@ export default function HomeScreen({
             ) : null}
           </View>
           <Pressable
-            onPress={handleSignOut}
+            onPress={() => setAccountSheetOpen(true)}
             style={({ pressed }) => [
-              styles.signOutBtn,
+              styles.avatar,
               pressed && { opacity: 0.85 },
             ]}
+            accessibilityLabel="Account"
           >
-            <Text style={styles.signOutText}>Sign out</Text>
+            <Text style={styles.avatarInitial}>{initialFor(userEmail)}</Text>
           </Pressable>
         </View>
       </LinearGradient>
+
+      <Modal
+        visible={accountSheetOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAccountSheetOpen(false)}
+      >
+        <Pressable
+          style={styles.sheetBackdrop}
+          onPress={() => setAccountSheetOpen(false)}
+        >
+          <Pressable style={styles.sheetCard} onPress={() => {}}>
+            <Text style={styles.sheetEyebrow}>Signed in as</Text>
+            <Text style={styles.sheetEmail} numberOfLines={1}>
+              {userEmail ?? "(sign out and back in to refresh)"}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setAccountSheetOpen(false);
+                handleSignOut();
+              }}
+              style={({ pressed }) => [
+                styles.sheetSignOut,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={styles.sheetSignOutText}>Sign out</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Filter rows — kind × status, AND'd together. Each row scrolls
           horizontally so adding more chips later doesn't overflow. */}
@@ -470,6 +509,12 @@ const KIND_EMOJI: Record<string, string> = {
   for_sale: "🔑",
 };
 
+function initialFor(email: string | null): string {
+  if (!email) return "·";
+  const trimmed = email.trim();
+  return (trimmed[0] ?? "·").toUpperCase();
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: {
@@ -520,18 +565,62 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.2,
   },
-  signOutBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    backgroundColor: "#FFFFFFB3",
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFFD0",
     borderWidth: 1,
     borderColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  signOutText: {
+  avatarInitial: {
     color: colors.primaryDeep,
-    fontSize: 13,
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: "#0008",
+    justifyContent: "flex-end",
+  },
+  sheetCard: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 36,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    ...shadow.card,
+  },
+  sheetEyebrow: {
+    fontSize: 11,
+    color: colors.textMuted,
     fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  sheetEmail: {
+    fontSize: 18,
+    color: colors.textPrimary,
+    fontWeight: "700",
+    marginTop: 6,
+    marginBottom: 22,
+  },
+  sheetSignOut: {
+    paddingVertical: 14,
+    borderRadius: radii.button,
+    backgroundColor: colors.pinkSoft,
+    borderWidth: 1,
+    borderColor: colors.pink,
+    alignItems: "center",
+  },
+  sheetSignOutText: {
+    color: colors.pinkDeep,
+    fontSize: 15,
+    fontWeight: "800",
     letterSpacing: 0.3,
   },
   empty: {

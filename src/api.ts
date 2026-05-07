@@ -155,6 +155,17 @@ export async function devSignIn(idToken: string): Promise<AuthResponse> {
   });
 }
 
+export type Me = {
+  id: string;
+  provider: string;
+  email_hash?: string;
+  created_at: string;
+};
+
+export async function getMe(): Promise<Me> {
+  return authed<Me>(`${API.USER}/v1/users/me`);
+}
+
 // --- properties ---
 
 export async function listProperties(): Promise<{ items: Property[] }> {
