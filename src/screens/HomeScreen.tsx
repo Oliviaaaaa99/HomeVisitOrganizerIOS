@@ -427,8 +427,8 @@ const styles = StyleSheet.create({
     top: 8,
     right: 12,
     fontSize: 14,
-    color: colors.cardAccent,
-    opacity: 0.85,
+    color: colors.pinkDeep,
+    opacity: 0.9,
   },
   cardRow: {
     flexDirection: "row",
