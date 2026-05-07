@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   sparkle: {
     position: "absolute",
-    color: colors.pinkDeep,
+    color: "#A8A8C0",
     fontWeight: "700",
   },
   cardRow: {
