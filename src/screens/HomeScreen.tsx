@@ -12,7 +12,12 @@ import {
   View,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { deleteProperty, listProperties, type Property } from "../api";
+import {
+  deleteProperty,
+  listProperties,
+  updatePropertyStatus,
+  type Property,
+} from "../api";
 import { clearTokens } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
@@ -37,8 +42,34 @@ export default function HomeScreen({
   const [kindFilter, setKindFilter] = useState<KindFilter>("any");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("any");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
+
+  async function toggleShortlist(p: Property) {
+    if (togglingId) return;
+    const next: Property["status"] =
+      p.status === "shortlisted" ? "toured" : "shortlisted";
+    setTogglingId(p.id);
+    // Optimistic — flip the row immediately so the gesture feels instant.
+    setItems((prev) =>
+      prev ? prev.map((x) => (x.id === p.id ? { ...x, status: next } : x)) : prev,
+    );
+    swipeRefs.current.get(p.id)?.close();
+    try {
+      await updatePropertyStatus(p.id, next);
+    } catch (err: any) {
+      // Revert on failure.
+      setItems((prev) =>
+        prev
+          ? prev.map((x) => (x.id === p.id ? { ...x, status: p.status } : x))
+          : prev,
+      );
+      Alert.alert("Couldn't update", err?.message ?? String(err));
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   function confirmDelete(p: Property) {
     Alert.alert(
@@ -251,8 +282,43 @@ export default function HomeScreen({
                 else swipeRefs.current.delete(item.id);
               }}
               friction={2}
+              leftThreshold={40}
               rightThreshold={40}
+              overshootLeft={false}
               overshootRight={false}
+              renderLeftActions={() => {
+                const isShortlisted = item.status === "shortlisted";
+                return (
+                  <View style={styles.swipeLeftActionContainer}>
+                    <Pressable
+                      onPress={() => toggleShortlist(item)}
+                      disabled={togglingId === item.id}
+                      style={({ pressed }) => [
+                        styles.swipeShortlist,
+                        isShortlisted && styles.swipeShortlistActive,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      {togglingId === item.id ? (
+                        <ActivityIndicator
+                          color={
+                            isShortlisted ? colors.primaryDeep : "#FFFFFF"
+                          }
+                        />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.swipeShortlistText,
+                            isShortlisted && styles.swipeShortlistTextActive,
+                          ]}
+                        >
+                          {isShortlisted ? "Unshortlist" : "★ Shortlist"}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </View>
+                );
+              }}
               renderRightActions={() => (
                 <View style={styles.swipeActionContainer}>
                   <Pressable
@@ -560,6 +626,33 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 14,
     letterSpacing: 0.3,
+  },
+  swipeLeftActionContainer: {
+    justifyContent: "center",
+    paddingRight: 8,
+  },
+  swipeShortlist: {
+    backgroundColor: colors.primary,
+    width: 110,
+    height: "100%",
+    borderRadius: radii.card,
+    justifyContent: "center",
+    alignItems: "center",
+    ...shadow.card,
+  },
+  swipeShortlistActive: {
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  swipeShortlistText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+  swipeShortlistTextActive: {
+    color: colors.primaryDeep,
   },
   card: {
     backgroundColor: colors.cardBg,
