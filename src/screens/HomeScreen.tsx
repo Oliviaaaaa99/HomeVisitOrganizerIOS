@@ -654,7 +654,11 @@ export default function HomeScreen({
                   ]}
                 >
                   <Text style={styles.unitEmoji}>
-                    {isShortlisted ? "★" : "🛋"}
+                    {isShortlisted
+                      ? "★"
+                      : section.property.kind === "for_sale"
+                        ? "🔑"
+                        : "🛋"}
                   </Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.unitTitle}>{unitTitle(item)}</Text>
@@ -1135,7 +1139,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
     borderLeftWidth: 4,
-    borderLeftColor: colors.cardAccent,
+    // Soft gray rail by default — only the shortlisted variant earns a
+    // saturated color (pink), so favorites stand out without every row
+    // shouting.
+    borderLeftColor: "#A8A8C0",
     flexDirection: "row",
     alignItems: "center",
   },
