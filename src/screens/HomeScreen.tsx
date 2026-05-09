@@ -542,7 +542,6 @@ export default function HomeScreen({
               tintColor={colors.primary}
             />
           }
-          SectionSeparatorComponent={() => <View style={styles.sectionSep} />}
           renderSectionHeader={({ section }) => {
             const property = section.property;
             return (
@@ -1094,7 +1093,6 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
-  sectionSep: { height: 22 },
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
@@ -1162,9 +1160,12 @@ const styles = StyleSheet.create({
   // gets rounded top corners, the bottom (footer) gets rounded bottom corners.
   // Looks like one continuous tray holding the property and its units.
   familyBackdrop: {
-    backgroundColor: colors.primarySoft,
+    // Saturated enough that the tray reads as a distinct surface against
+    // the page bg (which is pale pink-cream) — the previous primarySoft
+    // was indistinguishable from the page and made the inside look white.
+    backgroundColor: "#E0D7FA",
     paddingHorizontal: 10,
-    borderColor: colors.borderSoft,
+    borderColor: "#C9BBEF",
     borderLeftWidth: 1,
     borderRightWidth: 1,
   },
@@ -1172,16 +1173,20 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 4,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
+    borderTopColor: "#C9BBEF",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
   },
   familyBottom: {
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
+    borderBottomColor: "#C9BBEF",
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
+    // Explicit gap between this family and the next, instead of relying on
+    // SectionSeparatorComponent (which caused the inter-section spacing to
+    // visually collapse).
+    marginBottom: 22,
   },
   // Section header inside the backdrop is just a label.
   sectionHeader: {
