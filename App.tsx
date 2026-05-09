@@ -8,17 +8,19 @@ import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import PropertyDetailScreen from "./src/screens/PropertyDetailScreen";
 import SignInScreen from "./src/screens/SignInScreen";
+import UnitDetailScreen from "./src/screens/UnitDetailScreen";
 import { loadAccess } from "./src/storage";
 
-// Tier 1 keeps routing absurdly simple — five screens, one state machine.
-// Adding expo-router can wait until we have ≥7 screens or deep links.
+// Tier 1 keeps routing absurdly simple — six screens, one state machine.
+// Adding expo-router can wait until we have ≥8 screens or deep links.
 type Screen =
   | { name: "loading" }
   | { name: "sign-in" }
   | { name: "home" }
   | { name: "add" }
   | { name: "detail"; propertyId: string }
-  | { name: "edit"; propertyId: string };
+  | { name: "edit"; propertyId: string }
+  | { name: "unit-detail"; propertyId: string; unitId: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
@@ -53,6 +55,9 @@ export default function App() {
         <HomeScreen
           reloadKey={reloadKey}
           onOpenProperty={(id) => setScreen({ name: "detail", propertyId: id })}
+          onOpenUnit={(propertyId, unitId) =>
+            setScreen({ name: "unit-detail", propertyId, unitId })
+          }
           onAddProperty={() => setScreen({ name: "add" })}
           onSignedOut={() => setScreen({ name: "sign-in" })}
         />
@@ -85,6 +90,19 @@ export default function App() {
             setScreen({ name: "detail", propertyId: screen.propertyId })
           }
           onSaved={() =>
+            setScreen({ name: "detail", propertyId: screen.propertyId })
+          }
+        />
+      )}
+      {screen.name === "unit-detail" && (
+        <UnitDetailScreen
+          propertyId={screen.propertyId}
+          unitId={screen.unitId}
+          onBack={() => {
+            setReloadKey((k) => k + 1);
+            setScreen({ name: "home" });
+          }}
+          onViewProperty={() =>
             setScreen({ name: "detail", propertyId: screen.propertyId })
           }
         />

@@ -34,6 +34,7 @@ import { colors, radii, shadow } from "../theme";
 
 type Props = {
   onOpenProperty: (id: string) => void;
+  onOpenUnit: (propertyId: string, unitId: string) => void;
   onAddProperty: () => void;
   onSignedOut: () => void;
   reloadKey: number;
@@ -50,6 +51,7 @@ type Section = { property: PropertyDetail; data: UnitRow[] };
 
 export default function HomeScreen({
   onOpenProperty,
+  onOpenUnit,
   onAddProperty,
   onSignedOut,
   reloadKey,
@@ -644,7 +646,7 @@ export default function HomeScreen({
                 }}
               >
                 <Pressable
-                  onPress={() => onOpenProperty(section.property.id)}
+                  onPress={() => onOpenUnit(section.property.id, item.id)}
                   style={({ pressed }) => [
                     styles.unitRow,
                     isShortlisted && styles.unitRowShortlisted,
