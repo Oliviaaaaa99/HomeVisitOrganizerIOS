@@ -93,7 +93,72 @@ export default function PhotoStrip({ unitId }: Props) {
     load();
   }, [load]);
 
-  async function handleAddPhotos() {
+  // Shared pipeline for both the camera and library entry points: presign,
+  // PUT the bytes in parallel, commit, then refresh.
+  async function uploadAssets(assets: ImagePicker.ImagePickerAsset[]) {
+    if (assets.length === 0) return;
+    setUploading(true);
+    setProgress(0);
+    try {
+      const presigned = await presignMedia(unitId, assets.length);
+
+      let done = 0;
+      await Promise.all(
+        assets.map(async (asset, idx) => {
+          const upload = presigned.uploads[idx];
+          // RN's fetch supports file:// URIs and returns a Blob with the
+          // right Content-Type from the file extension.
+          const blob = await (await fetch(asset.uri)).blob();
+          const res = await fetch(upload.url, {
+            method: "PUT",
+            body: blob,
+          });
+          if (!res.ok) {
+            throw new Error(`upload ${idx + 1} failed: HTTP ${res.status}`);
+          }
+          done++;
+          setProgress(done / assets.length);
+        }),
+      );
+
+      await commitMedia(
+        unitId,
+        presigned.uploads.map((u) => ({
+          s3_key: u.s3_key,
+          media_type: "photo",
+        })),
+      );
+
+      await load();
+    } catch (err: any) {
+      Alert.alert("Upload failed", err?.message ?? String(err));
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  }
+
+  async function handleTakePhoto() {
+    if (uploading) return;
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(
+        "Camera permission needed",
+        "Enable in Settings → Privacy → Camera.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.85,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    await uploadAssets(result.assets);
+  }
+
+  async function handlePickFromLibrary() {
+    if (uploading) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== "granted") {
       Alert.alert(
@@ -109,50 +174,7 @@ export default function PhotoStrip({ unitId }: Props) {
       quality: 0.85,
     });
     if (result.canceled || result.assets.length === 0) return;
-
-    setUploading(true);
-    setProgress(0);
-    try {
-      // 1. Ask backend for N upload URLs
-      const presigned = await presignMedia(unitId, result.assets.length);
-
-      // 2. PUT bytes to each presigned URL — do them in parallel
-      let done = 0;
-      await Promise.all(
-        result.assets.map(async (asset, idx) => {
-          const upload = presigned.uploads[idx];
-          // RN's fetch supports file:// URIs and returns a Blob with the
-          // right Content-Type from the file extension.
-          const blob = await (await fetch(asset.uri)).blob();
-          const res = await fetch(upload.url, {
-            method: "PUT",
-            body: blob,
-          });
-          if (!res.ok) {
-            throw new Error(`upload ${idx + 1} failed: HTTP ${res.status}`);
-          }
-          done++;
-          setProgress(done / result.assets.length);
-        }),
-      );
-
-      // 3. Commit (writes media_assets rows on the backend)
-      await commitMedia(
-        unitId,
-        presigned.uploads.map((u) => ({
-          s3_key: u.s3_key,
-          media_type: "photo",
-        })),
-      );
-
-      // 4. Refresh thumbnails
-      await load();
-    } catch (err: any) {
-      Alert.alert("Upload failed", err?.message ?? String(err));
-    } finally {
-      setUploading(false);
-      setProgress(0);
-    }
+    await uploadAssets(result.assets);
   }
 
   async function handleDelete(item: MediaItem) {
@@ -204,29 +226,39 @@ export default function PhotoStrip({ unitId }: Props) {
           </Pressable>
         ))}
 
-        <Pressable
-          onPress={handleAddPhotos}
-          disabled={uploading}
-          style={({ pressed }) => [
-            styles.addBtn,
-            uploading && { opacity: 0.7 },
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          {uploading ? (
-            <View style={{ alignItems: "center" }}>
-              <ActivityIndicator color={colors.primaryDeep} size="small" />
-              <Text style={styles.addBtnTextSmall}>
-                {Math.round(progress * 100)}%
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.addBtnPlus}>+</Text>
-              <Text style={styles.addBtnText}>Photos</Text>
-            </>
-          )}
-        </Pressable>
+        {uploading ? (
+          <View style={[styles.addBtn, { opacity: 0.7 }]}>
+            <ActivityIndicator color={colors.primaryDeep} size="small" />
+            <Text style={styles.addBtnTextSmall}>
+              {Math.round(progress * 100)}%
+            </Text>
+          </View>
+        ) : (
+          <>
+            <Pressable
+              onPress={handleTakePhoto}
+              style={({ pressed }) => [
+                styles.addBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel="Take photo"
+            >
+              <Text style={styles.addBtnIcon}>📷</Text>
+              <Text style={styles.addBtnText}>Camera</Text>
+            </Pressable>
+            <Pressable
+              onPress={handlePickFromLibrary}
+              style={({ pressed }) => [
+                styles.addBtn,
+                pressed && { opacity: 0.85 },
+              ]}
+              accessibilityLabel="Pick from library"
+            >
+              <Text style={styles.addBtnIcon}>🖼️</Text>
+              <Text style={styles.addBtnText}>Library</Text>
+            </Pressable>
+          </>
+        )}
       </ScrollView>
 
       {/* Fullscreen viewer */}
@@ -362,10 +394,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  addBtnPlus: {
-    fontSize: 24,
-    color: colors.primaryDeep,
-    fontWeight: "700",
+  addBtnIcon: {
+    fontSize: 22,
     lineHeight: 26,
   },
   addBtnText: {
