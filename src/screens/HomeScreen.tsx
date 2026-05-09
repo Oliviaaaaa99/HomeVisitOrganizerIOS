@@ -23,10 +23,11 @@ import {
   getProperty,
   listProperties,
   presignAvatar,
-  updatePropertyStatus,
+  updateUnitStatus,
   type Property,
   type PropertyDetail,
   type Unit,
+  type UnitStatus,
 } from "../api";
 import { clearTokens, loadUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
@@ -126,23 +127,43 @@ export default function HomeScreen({
     }
   }
 
-  async function toggleShortlist(p: Property) {
+  async function toggleShortlist(u: Unit) {
     if (togglingId) return;
-    const next: Property["status"] =
-      p.status === "shortlisted" ? "toured" : "shortlisted";
-    setTogglingId(p.id);
+    const next: UnitStatus =
+      u.status === "shortlisted" ? "toured" : "shortlisted";
+    setTogglingId(u.id);
     // Optimistic — flip the row immediately so the gesture feels instant.
     setItems((prev) =>
-      prev ? prev.map((x) => (x.id === p.id ? { ...x, status: next } : x)) : prev,
+      prev
+        ? prev.map((p) =>
+            p.id === u.property_id
+              ? {
+                  ...p,
+                  units: p.units.map((x) =>
+                    x.id === u.id ? { ...x, status: next } : x,
+                  ),
+                }
+              : p,
+          )
+        : prev,
     );
-    swipeRefs.current.get(p.id)?.close();
+    swipeRefs.current.get(u.id)?.close();
     try {
-      await updatePropertyStatus(p.id, next);
+      await updateUnitStatus(u.id, next);
     } catch (err: any) {
       // Revert on failure.
       setItems((prev) =>
         prev
-          ? prev.map((x) => (x.id === p.id ? { ...x, status: p.status } : x))
+          ? prev.map((p) =>
+              p.id === u.property_id
+                ? {
+                    ...p,
+                    units: p.units.map((x) =>
+                      x.id === u.id ? { ...x, status: u.status } : x,
+                    ),
+                  }
+                : p,
+            )
           : prev,
       );
       Alert.alert("Couldn't update", err?.message ?? String(err));
@@ -230,28 +251,54 @@ export default function HomeScreen({
 
   const matchKind = (p: Property, k: KindFilter) =>
     k === "any" || p.kind === k;
-  const matchStatus = (p: Property, s: StatusFilter) =>
-    s === "any" || p.status === s;
-  const displayed = items.filter(
-    (p) => matchKind(p, kindFilter) && matchStatus(p, statusFilter),
-  );
-  // Counts on each chip reflect what you'd see if you picked it, given the
-  // OTHER row's current filter — so the badges stay honest.
-  const kindCount = (k: KindFilter) =>
-    items.filter((p) => matchKind(p, k) && matchStatus(p, statusFilter)).length;
-  const statusCount = (s: StatusFilter) =>
-    items.filter((p) => matchKind(p, kindFilter) && matchStatus(p, s)).length;
+  const matchUnitStatus = (u: Unit, s: StatusFilter) =>
+    s === "any" || u.status === s;
 
-  // Each section's data is either the property's units OR a single
-  // "_empty" placeholder so the section always has at least one row to
-  // render (SectionList skips sections with empty data arrays).
-  const sections: Section[] = displayed.map((property) => ({
-    property,
-    data:
-      property.units.length === 0
-        ? [{ _empty: true as const, id: `empty-${property.id}` }]
-        : property.units,
-  }));
+  // Filter logic with status now living on units:
+  // - Sections (properties) are kept if their kind matches the kind filter.
+  // - Inside each kept section, units are filtered by status.
+  // - When the status filter is "any" we keep all units (including empty
+  //   placeholder for unitless properties); otherwise we drop sections that
+  //   end up with zero matching units, since "show me only my shortlisted"
+  //   shouldn't render empty-section headers.
+  const sections: Section[] = items.flatMap((property) => {
+    if (!matchKind(property, kindFilter)) return [];
+    if (statusFilter === "any") {
+      return [
+        {
+          property,
+          data:
+            property.units.length === 0
+              ? [{ _empty: true as const, id: `empty-${property.id}` }]
+              : property.units,
+        } as Section,
+      ];
+    }
+    const matched = property.units.filter((u) =>
+      matchUnitStatus(u, statusFilter),
+    );
+    if (matched.length === 0) return [];
+    return [{ property, data: matched } as Section];
+  });
+
+  // Counts on each chip reflect what would render if you picked it, given
+  // the OTHER row's current filter — so the badges stay honest.
+  const kindCount = (k: KindFilter) =>
+    items.reduce((n, p) => {
+      if (!matchKind(p, k)) return n;
+      if (statusFilter === "any")
+        return n + (p.units.length === 0 ? 1 : p.units.length);
+      const matched = p.units.filter((u) =>
+        matchUnitStatus(u, statusFilter),
+      ).length;
+      return n + matched;
+    }, 0);
+  const statusCount = (s: StatusFilter) =>
+    items.reduce((n, p) => {
+      if (!matchKind(p, kindFilter)) return n;
+      if (s === "any") return n + (p.units.length === 0 ? 1 : p.units.length);
+      return n + p.units.filter((u) => matchUnitStatus(u, s)).length;
+    }, 0);
 
   return (
     <View style={styles.container}>
@@ -429,7 +476,7 @@ export default function HomeScreen({
             2.
           </Text>
         </View>
-      ) : displayed.length === 0 ? (
+      ) : sections.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔎</Text>
           <Text style={styles.emptyTitle}>Nothing matches</Text>
@@ -454,6 +501,9 @@ export default function HomeScreen({
           SectionSeparatorComponent={() => <View style={styles.sectionSep} />}
           renderSectionHeader={({ section }) => {
             const property = section.property;
+            const sectionHasShortlisted = property.units.some(
+              (u) => u.status === "shortlisted",
+            );
             return (
               <Swipeable
                 ref={(r) => {
@@ -461,43 +511,8 @@ export default function HomeScreen({
                   else swipeRefs.current.delete(property.id);
                 }}
                 friction={2}
-                leftThreshold={40}
                 rightThreshold={40}
-                overshootLeft={false}
                 overshootRight={false}
-                renderLeftActions={() => {
-                  const isShortlisted = property.status === "shortlisted";
-                  return (
-                    <View style={styles.swipeLeftActionContainer}>
-                      <Pressable
-                        onPress={() => toggleShortlist(property)}
-                        disabled={togglingId === property.id}
-                        style={({ pressed }) => [
-                          styles.swipeShortlist,
-                          isShortlisted && styles.swipeShortlistActive,
-                          pressed && { opacity: 0.85 },
-                        ]}
-                      >
-                        {togglingId === property.id ? (
-                          <ActivityIndicator
-                            color={
-                              isShortlisted ? colors.primaryDeep : "#FFFFFF"
-                            }
-                          />
-                        ) : (
-                          <Text
-                            style={[
-                              styles.swipeShortlistText,
-                              isShortlisted && styles.swipeShortlistTextActive,
-                            ]}
-                          >
-                            {isShortlisted ? "Unshortlist" : "★ Shortlist"}
-                          </Text>
-                        )}
-                      </Pressable>
-                    </View>
-                  );
-                }}
                 renderRightActions={() => (
                   <View style={styles.swipeActionContainer}>
                     <Pressable
@@ -526,8 +541,10 @@ export default function HomeScreen({
                   disabled={deletingId === property.id}
                   style={({ pressed }) => [
                     styles.sectionHeader,
-                    property.status === "shortlisted" &&
-                      styles.sectionHeaderShortlisted,
+                    // Soft hint that this section has at least one shortlisted
+                    // unit — pink rail mirrors the unit-row star without
+                    // promising property-level state.
+                    sectionHasShortlisted && styles.sectionHeaderShortlisted,
                     pressed && { transform: [{ scale: 0.99 }] },
                     deletingId === property.id && { opacity: 0.5 },
                   ]}
@@ -552,7 +569,6 @@ export default function HomeScreen({
                       </Text>
                       <View style={styles.badges}>
                         <Pill text={property.kind} />
-                        <Pill text={property.status} />
                       </View>
                       <Text style={styles.unitCount}>
                         {property.units.length === 0
@@ -583,25 +599,71 @@ export default function HomeScreen({
                 </Pressable>
               );
             }
+            const isShortlisted = item.status === "shortlisted";
             return (
-              <Pressable
-                onPress={() => onOpenProperty(section.property.id)}
-                style={({ pressed }) => [
-                  styles.unitRow,
-                  pressed && { opacity: 0.85 },
-                ]}
+              <Swipeable
+                ref={(r) => {
+                  if (r) swipeRefs.current.set(item.id, r);
+                  else swipeRefs.current.delete(item.id);
+                }}
+                friction={2}
+                leftThreshold={40}
+                overshootLeft={false}
+                renderLeftActions={() => (
+                  <View style={styles.unitSwipeLeftContainer}>
+                    <Pressable
+                      onPress={() => toggleShortlist(item)}
+                      disabled={togglingId === item.id}
+                      style={({ pressed }) => [
+                        styles.swipeShortlist,
+                        isShortlisted && styles.swipeShortlistActive,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      {togglingId === item.id ? (
+                        <ActivityIndicator
+                          color={isShortlisted ? colors.primaryDeep : "#FFFFFF"}
+                        />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.swipeShortlistText,
+                            isShortlisted && styles.swipeShortlistTextActive,
+                          ]}
+                        >
+                          {isShortlisted ? "Unshortlist" : "★ Shortlist"}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
+                onSwipeableWillOpen={() => {
+                  swipeRefs.current.forEach((ref, id) => {
+                    if (id !== item.id) ref?.close();
+                  });
+                }}
               >
-                <Text style={styles.unitEmoji}>🛋</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.unitTitle}>
-                    {unitTitle(item)}
+                <Pressable
+                  onPress={() => onOpenProperty(section.property.id)}
+                  style={({ pressed }) => [
+                    styles.unitRow,
+                    isShortlisted && styles.unitRowShortlisted,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={styles.unitEmoji}>
+                    {isShortlisted ? "★" : "🛋"}
                   </Text>
-                  <Text style={styles.unitSubtitle}>
-                    {unitSubtitle(item)}
-                  </Text>
-                </View>
-                <Text style={styles.unitChevron}>›</Text>
-              </Pressable>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.unitTitle}>{unitTitle(item)}</Text>
+                    <Text style={styles.unitSubtitle}>
+                      {unitSubtitle(item)}
+                    </Text>
+                  </View>
+                  <Pill text={item.status} />
+                  <Text style={styles.unitChevron}>›</Text>
+                </Pressable>
+              </Swipeable>
             );
           }}
         />
@@ -676,15 +738,26 @@ function Pill({ text }: { text: string }) {
   );
 }
 
-// Build a one-liner like "3 properties · 2 shortlisted · 1 rejected".
-// Statuses with zero count are skipped; toured is implicit since it's the
-// default and would clutter the header for users who haven't categorized yet.
-function summarize(items: Property[]): string {
-  const counts: Record<string, number> = {};
-  for (const p of items) counts[p.status] = (counts[p.status] ?? 0) + 1;
-  const parts: string[] = [`${items.length} ${items.length === 1 ? "property" : "properties"}`];
-  if (counts.shortlisted) parts.push(`${counts.shortlisted} shortlisted`);
-  if (counts.rejected) parts.push(`${counts.rejected} rejected`);
+// Header subtitle line summarizing the user's collection. Counts unit-level
+// status now since that's where state lives. Statuses with zero count are
+// skipped; "toured" is implicit (the default) and would clutter the line.
+function summarize(items: PropertyDetail[]): string {
+  let units = 0;
+  let shortlisted = 0;
+  let rejected = 0;
+  for (const p of items) {
+    units += p.units.length;
+    for (const u of p.units) {
+      if (u.status === "shortlisted") shortlisted++;
+      else if (u.status === "rejected") rejected++;
+    }
+  }
+  const parts: string[] = [
+    `${items.length} ${items.length === 1 ? "property" : "properties"}`,
+  ];
+  if (units > 0) parts.push(`${units} ${units === 1 ? "unit" : "units"}`);
+  if (shortlisted) parts.push(`${shortlisted} shortlisted`);
+  if (rejected) parts.push(`${rejected} rejected`);
   return parts.join(" · ");
 }
 
@@ -1063,6 +1136,16 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     flexDirection: "row",
     alignItems: "center",
+  },
+  unitRowShortlisted: {
+    borderColor: "#d674c7",
+    backgroundColor: "#FFF4FB",
+  },
+  unitSwipeLeftContainer: {
+    justifyContent: "center",
+    paddingLeft: 16,
+    paddingRight: 8,
+    marginTop: 8,
   },
   unitEmoji: {
     fontSize: 18,
