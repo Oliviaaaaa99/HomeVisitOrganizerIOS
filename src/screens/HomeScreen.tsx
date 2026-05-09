@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   Modal,
   Pressable,
   RefreshControl,
   ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -20,10 +20,13 @@ import {
   deleteAvatar,
   deleteProperty,
   getMe,
+  getProperty,
   listProperties,
   presignAvatar,
   updatePropertyStatus,
   type Property,
+  type PropertyDetail,
+  type Unit,
 } from "../api";
 import { clearTokens, loadUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
@@ -38,13 +41,19 @@ type Props = {
 type KindFilter = "any" | "rental" | "for_sale";
 type StatusFilter = "any" | "shortlisted" | "toured" | "rejected";
 
+// SectionList row payload: either a real Unit, or a placeholder for sections
+// whose property has no units yet.
+type EmptyUnitRow = { _empty: true; id: string };
+type UnitRow = Unit | EmptyUnitRow;
+type Section = { property: PropertyDetail; data: UnitRow[] };
+
 export default function HomeScreen({
   onOpenProperty,
   onAddProperty,
   onSignedOut,
   reloadKey,
 }: Props) {
-  const [items, setItems] = useState<Property[] | null>(null);
+  const [items, setItems] = useState<PropertyDetail[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kindFilter, setKindFilter] = useState<KindFilter>("any");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("any");
@@ -176,8 +185,20 @@ export default function HomeScreen({
 
   const load = useCallback(async () => {
     try {
+      // First get the property index, then fan out to fetch each one's units
+      // in parallel. With small N (a handful of properties for one user) this
+      // is fine; if the list ever grows we'll bake `units` into the list
+      // endpoint server-side.
       const resp = await listProperties();
-      setItems(resp.items ?? []);
+      const properties = resp.items ?? [];
+      const details = await Promise.all(
+        properties.map((p) =>
+          getProperty(p.id).catch((): PropertyDetail | null => null),
+        ),
+      );
+      // Drop any that failed to fetch — they'll come back on the next refresh.
+      const ok = details.filter((d): d is PropertyDetail => d !== null);
+      setItems(ok);
     } catch (err: any) {
       Alert.alert("Load failed", err?.message ?? String(err));
       setItems([]);
@@ -220,6 +241,17 @@ export default function HomeScreen({
     items.filter((p) => matchKind(p, k) && matchStatus(p, statusFilter)).length;
   const statusCount = (s: StatusFilter) =>
     items.filter((p) => matchKind(p, kindFilter) && matchStatus(p, s)).length;
+
+  // Each section's data is either the property's units OR a single
+  // "_empty" placeholder so the section always has at least one row to
+  // render (SectionList skips sections with empty data arrays).
+  const sections: Section[] = displayed.map((property) => ({
+    property,
+    data:
+      property.units.length === 0
+        ? [{ _empty: true as const, id: `empty-${property.id}` }]
+        : property.units,
+  }));
 
   return (
     <View style={styles.container}>
@@ -407,10 +439,11 @@ export default function HomeScreen({
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={displayed}
-          keyExtractor={(p) => p.id}
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -418,113 +451,159 @@ export default function HomeScreen({
               tintColor={colors.primary}
             />
           }
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          renderItem={({ item }) => (
-            <Swipeable
-              ref={(r) => {
-                if (r) swipeRefs.current.set(item.id, r);
-                else swipeRefs.current.delete(item.id);
-              }}
-              friction={2}
-              leftThreshold={40}
-              rightThreshold={40}
-              overshootLeft={false}
-              overshootRight={false}
-              renderLeftActions={() => {
-                const isShortlisted = item.status === "shortlisted";
-                return (
-                  <View style={styles.swipeLeftActionContainer}>
+          SectionSeparatorComponent={() => <View style={styles.sectionSep} />}
+          renderSectionHeader={({ section }) => {
+            const property = section.property;
+            return (
+              <Swipeable
+                ref={(r) => {
+                  if (r) swipeRefs.current.set(property.id, r);
+                  else swipeRefs.current.delete(property.id);
+                }}
+                friction={2}
+                leftThreshold={40}
+                rightThreshold={40}
+                overshootLeft={false}
+                overshootRight={false}
+                renderLeftActions={() => {
+                  const isShortlisted = property.status === "shortlisted";
+                  return (
+                    <View style={styles.swipeLeftActionContainer}>
+                      <Pressable
+                        onPress={() => toggleShortlist(property)}
+                        disabled={togglingId === property.id}
+                        style={({ pressed }) => [
+                          styles.swipeShortlist,
+                          isShortlisted && styles.swipeShortlistActive,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        {togglingId === property.id ? (
+                          <ActivityIndicator
+                            color={
+                              isShortlisted ? colors.primaryDeep : "#FFFFFF"
+                            }
+                          />
+                        ) : (
+                          <Text
+                            style={[
+                              styles.swipeShortlistText,
+                              isShortlisted && styles.swipeShortlistTextActive,
+                            ]}
+                          >
+                            {isShortlisted ? "Unshortlist" : "★ Shortlist"}
+                          </Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  );
+                }}
+                renderRightActions={() => (
+                  <View style={styles.swipeActionContainer}>
                     <Pressable
-                      onPress={() => toggleShortlist(item)}
-                      disabled={togglingId === item.id}
+                      onPress={() => confirmDelete(property)}
                       style={({ pressed }) => [
-                        styles.swipeShortlist,
-                        isShortlisted && styles.swipeShortlistActive,
+                        styles.swipeDelete,
                         pressed && { opacity: 0.85 },
                       ]}
                     >
-                      {togglingId === item.id ? (
-                        <ActivityIndicator
-                          color={
-                            isShortlisted ? colors.primaryDeep : "#FFFFFF"
-                          }
-                        />
+                      {deletingId === property.id ? (
+                        <ActivityIndicator color="#FFFFFF" />
                       ) : (
-                        <Text
-                          style={[
-                            styles.swipeShortlistText,
-                            isShortlisted && styles.swipeShortlistTextActive,
-                          ]}
-                        >
-                          {isShortlisted ? "Unshortlist" : "★ Shortlist"}
-                        </Text>
+                        <Text style={styles.swipeDeleteText}>Delete</Text>
                       )}
                     </Pressable>
                   </View>
-                );
-              }}
-              renderRightActions={() => (
-                <View style={styles.swipeActionContainer}>
-                  <Pressable
-                    onPress={() => confirmDelete(item)}
-                    style={({ pressed }) => [
-                      styles.swipeDelete,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                  >
-                    {deletingId === item.id ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.swipeDeleteText}>Delete</Text>
-                    )}
-                  </Pressable>
-                </View>
-              )}
-              onSwipeableWillOpen={() => {
-                // Close any other open row when this one opens.
-                swipeRefs.current.forEach((ref, id) => {
-                  if (id !== item.id) ref?.close();
-                });
-              }}
-            >
-            <Pressable
-              onPress={() => onOpenProperty(item.id)}
-              disabled={deletingId === item.id}
-              style={({ pressed }) => [
-                styles.card,
-                item.status === "shortlisted" && styles.cardShortlisted,
-                pressed && { transform: [{ scale: 0.98 }] },
-                deletingId === item.id && { opacity: 0.5 },
-              ]}
-            >
-              <View pointerEvents="none" style={styles.sparkleCluster}>
-                <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95, color: "#F5E9E0" }]}>✦</Text>
-                <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.75, color: "#E5E0EE" }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
-                <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.85, color: "#F5E9E0" }]}>✧</Text>
-                <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.75, color: "#E5E0EE" }]}>✦</Text>
-              </View>
-              <View style={styles.cardRow}>
-                <View style={styles.kindBadge}>
-                  <Text style={styles.kindEmoji}>
-                    {KIND_EMOJI[item.kind] ?? "🏠"}
-                  </Text>
-                </View>
-                <View style={styles.cardMain}>
-                  <Text style={styles.address} numberOfLines={2}>
-                    {item.address}
-                  </Text>
-                  <View style={styles.badges}>
-                    <Pill text={item.kind} />
-                    <Pill text={item.status} />
+                )}
+                onSwipeableWillOpen={() => {
+                  swipeRefs.current.forEach((ref, id) => {
+                    if (id !== property.id) ref?.close();
+                  });
+                }}
+              >
+                <Pressable
+                  onPress={() => onOpenProperty(property.id)}
+                  disabled={deletingId === property.id}
+                  style={({ pressed }) => [
+                    styles.sectionHeader,
+                    property.status === "shortlisted" &&
+                      styles.sectionHeaderShortlisted,
+                    pressed && { transform: [{ scale: 0.99 }] },
+                    deletingId === property.id && { opacity: 0.5 },
+                  ]}
+                >
+                  <View pointerEvents="none" style={styles.sparkleCluster}>
+                    <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95, color: "#F5E9E0" }]}>✦</Text>
+                    <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.75, color: "#E5E0EE" }]}>✧</Text>
+                    <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
+                    <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
+                    <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.85, color: "#F5E9E0" }]}>✧</Text>
+                    <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.75, color: "#E5E0EE" }]}>✦</Text>
                   </View>
+                  <View style={styles.cardRow}>
+                    <View style={styles.kindBadge}>
+                      <Text style={styles.kindEmoji}>
+                        {KIND_EMOJI[property.kind] ?? "🏠"}
+                      </Text>
+                    </View>
+                    <View style={styles.cardMain}>
+                      <Text style={styles.address} numberOfLines={2}>
+                        {property.address}
+                      </Text>
+                      <View style={styles.badges}>
+                        <Pill text={property.kind} />
+                        <Pill text={property.status} />
+                      </View>
+                      <Text style={styles.unitCount}>
+                        {property.units.length === 0
+                          ? "No units yet"
+                          : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </View>
+                </Pressable>
+              </Swipeable>
+            );
+          }}
+          renderItem={({ item, section }) => {
+            // Sections always carry at least one item — when the property has
+            // no units, we render an "Add unit" placeholder row.
+            if ("_empty" in item) {
+              return (
+                <Pressable
+                  onPress={() => onOpenProperty(section.property.id)}
+                  style={({ pressed }) => [
+                    styles.unitRow,
+                    styles.unitRowEmpty,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={styles.unitRowEmptyText}>+ Add a unit</Text>
+                </Pressable>
+              );
+            }
+            return (
+              <Pressable
+                onPress={() => onOpenProperty(section.property.id)}
+                style={({ pressed }) => [
+                  styles.unitRow,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={styles.unitEmoji}>🛋</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.unitTitle}>
+                    {unitTitle(item)}
+                  </Text>
+                  <Text style={styles.unitSubtitle}>
+                    {unitSubtitle(item)}
+                  </Text>
                 </View>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            </Pressable>
-            </Swipeable>
-          )}
+                <Text style={styles.unitChevron}>›</Text>
+              </Pressable>
+            );
+          }}
         />
       )}
 
@@ -618,6 +697,39 @@ function initialFor(email: string | null): string {
   if (!email) return "·";
   const trimmed = email.trim();
   return (trimmed[0] ?? "·").toUpperCase();
+}
+
+function unitTitle(u: Unit): string {
+  // Lead with the user's label if they bothered to set one (e.g. "Apt 4B"),
+  // otherwise the type — "Studio", "1-bedroom", "townhouse", etc.
+  return u.unit_label?.trim() || prettyUnitType(u.unit_type);
+}
+
+function unitSubtitle(u: Unit): string {
+  const parts: string[] = [];
+  if (u.price_cents != null) {
+    parts.push(`$${(u.price_cents / 100).toLocaleString()}`);
+  }
+  if (u.sqft != null) parts.push(`${u.sqft} sqft`);
+  if (u.beds != null) parts.push(`${u.beds}bd`);
+  if (u.baths != null) parts.push(`${u.baths}ba`);
+  return parts.length === 0 ? "No details yet" : parts.join(" · ");
+}
+
+function prettyUnitType(t: string): string {
+  switch (t) {
+    case "Studio":
+    case "studio":
+      return "Studio";
+    case "1B":
+      return "1-bedroom";
+    case "2B":
+      return "2-bedroom";
+    case "3B":
+      return "3-bedroom";
+    default:
+      return t;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -853,6 +965,7 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
+  sectionSep: { height: 18 },
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
@@ -913,6 +1026,73 @@ const styles = StyleSheet.create({
   },
   cardShortlisted: {
     borderLeftColor: "#d674c7",
+  },
+  // Section header reuses the property-card look so the visual identity
+  // (lavender bg, sparkle cluster, pink rail when shortlisted) carries over
+  // from the previous design.
+  sectionHeader: {
+    backgroundColor: colors.cardBg,
+    borderRadius: radii.card,
+    padding: 16,
+    paddingRight: 22,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.cardAccent,
+    overflow: "hidden",
+    ...shadow.card,
+  },
+  sectionHeaderShortlisted: {
+    borderLeftColor: "#d674c7",
+  },
+  unitCount: {
+    marginTop: 6,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
+  unitRow: {
+    marginTop: 8,
+    marginLeft: 16,
+    marginRight: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  unitEmoji: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  unitTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  unitSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  unitChevron: {
+    fontSize: 22,
+    color: colors.textMuted,
+    marginLeft: 6,
+  },
+  unitRowEmpty: {
+    borderStyle: "dashed",
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  unitRowEmptyText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primaryDeep,
   },
   sparkleCluster: {
     position: "absolute",
