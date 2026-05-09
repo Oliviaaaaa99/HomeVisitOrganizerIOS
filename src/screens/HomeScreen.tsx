@@ -1112,14 +1112,12 @@ const styles = StyleSheet.create({
     paddingRight: 22,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.cardAccent,
     overflow: "hidden",
     ...shadow.card,
   },
-  sectionHeaderShortlisted: {
-    borderLeftColor: "#d674c7",
-  },
+  // Reserved for future use (e.g. a soft "any shortlisted unit here" hint)
+  // — currently a no-op so we don't double-signal alongside the unit rails.
+  sectionHeaderShortlisted: {},
   unitCount: {
     marginTop: 6,
     fontSize: 12,
@@ -1136,11 +1134,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     borderWidth: 1,
     borderColor: colors.borderSoft,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.cardAccent,
     flexDirection: "row",
     alignItems: "center",
   },
   unitRowShortlisted: {
     borderColor: "#d674c7",
+    borderLeftColor: "#d674c7",
     backgroundColor: "#FFF4FB",
   },
   unitSwipeLeftContainer: {
