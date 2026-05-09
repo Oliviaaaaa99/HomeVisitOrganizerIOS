@@ -12,19 +12,19 @@ import {
   View,
 } from "react-native";
 import {
-  deleteProperty,
   createNote,
   createUnit,
   deleteNote,
+  deleteProperty,
   deleteUnit,
   getProperty,
   updateNote,
-  updatePropertyStatus,
   updateUnit,
+  updateUnitStatus,
   type Note,
-  type Property,
   type PropertyDetail,
   type Unit,
+  type UnitStatus,
 } from "../api";
 import { colors, radii, shadow } from "../theme";
 import PhotoStrip from "./PhotoStrip";
@@ -74,12 +74,15 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
     }
   }
 
-  async function handleStatus(next: Property["status"]) {
-    if (!data || data.status === next || busyAction) return;
-    setBusyAction(next);
+  async function handleUnitStatus(unit: Unit, next: UnitStatus) {
+    if (!data || unit.status === next || busyAction) return;
+    setBusyAction(`unit-${unit.id}-${next}`);
     try {
-      const updated = await updatePropertyStatus(propertyId, next);
-      setData({ ...data, ...updated });
+      const updated = await updateUnitStatus(unit.id, next);
+      setData({
+        ...data,
+        units: data.units.map((u) => (u.id === unit.id ? { ...u, ...updated } : u)),
+      });
     } catch (err: any) {
       Alert.alert("Update failed", err?.message ?? String(err));
     } finally {
@@ -156,7 +159,6 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         <Text style={styles.address}>{data.address}</Text>
         <View style={styles.metaRow}>
           <Pill text={data.kind} />
-          <Pill text={data.status} />
           {data.latitude !== undefined && data.longitude !== undefined && (
             <Text style={styles.coords}>
               {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
@@ -178,14 +180,17 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <ActionRow
-          status={data.status}
-          busy={busyAction}
-          onShortlist={() => handleStatus("shortlisted")}
-          onReject={() => handleStatus("rejected")}
-          onUnshortlist={() => handleStatus("toured")}
-          onDelete={handleDelete}
-        />
+        {/* Property-level action: only Delete remains. Tour-state lives on
+            units now — flip it from the unit row in the list below or from
+            the Home swipe gesture. */}
+        <View style={styles.actionRow}>
+          <ActionButton
+            text="Delete property"
+            variant="danger"
+            loading={busyAction === "delete"}
+            onPress={handleDelete}
+          />
+        </View>
 
         {/* Units */}
         <View style={styles.section}>
@@ -267,6 +272,11 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
                       </Text>
                     ) : null}
                   </Pressable>
+                  <UnitStatusBar
+                    unit={u}
+                    busy={busyAction}
+                    onChange={(next) => handleUnitStatus(u, next)}
+                  />
                   <PhotoStrip unitId={u.id} />
                 </View>
               ),
@@ -681,53 +691,57 @@ function NoteForm({
   );
 }
 
-function ActionRow({
-  status,
+// Inline 4-state status switcher for a unit. Tapping a chip flips the
+// unit's status; the active chip is filled, others are outlined.
+function UnitStatusBar({
+  unit,
   busy,
-  onShortlist,
-  onReject,
-  onUnshortlist,
-  onDelete,
+  onChange,
 }: {
-  status: Property["status"];
+  unit: Unit;
   busy: string | null;
-  onShortlist: () => void;
-  onReject: () => void;
-  onUnshortlist: () => void;
-  onDelete: () => void;
+  onChange: (next: UnitStatus) => void;
 }) {
-  if (status === "archived") return null;
+  const options: { key: UnitStatus; label: string }[] = [
+    { key: "toured", label: "✓ Toured" },
+    { key: "shortlisted", label: "★ Shortlist" },
+    { key: "rejected", label: "✕ Reject" },
+    { key: "archived", label: "📦 Archive" },
+  ];
   return (
-    <View style={styles.actionRow}>
-      {status === "shortlisted" ? (
-        <ActionButton
-          text="Move to toured"
-          variant="secondary"
-          loading={busy === "toured"}
-          onPress={onUnshortlist}
-        />
-      ) : (
-        <ActionButton
-          text="★ Shortlist"
-          variant="primary"
-          loading={busy === "shortlisted"}
-          onPress={onShortlist}
-        />
-      )}
-      {status !== "rejected" && (
-        <ActionButton
-          text="Reject"
-          variant="ghost"
-          loading={busy === "rejected"}
-          onPress={onReject}
-        />
-      )}
-      <ActionButton
-        text="Delete"
-        variant="danger"
-        loading={busy === "delete"}
-        onPress={onDelete}
-      />
+    <View style={styles.unitStatusBar}>
+      {options.map((o) => {
+        const active = unit.status === o.key;
+        const loading = busy === `unit-${unit.id}-${o.key}`;
+        return (
+          <Pressable
+            key={o.key}
+            onPress={() => onChange(o.key)}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.unitStatusChip,
+              active && styles.unitStatusChipActive,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator
+                color={active ? "#FFFFFF" : colors.primaryDeep}
+                size="small"
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.unitStatusChipText,
+                  active && styles.unitStatusChipTextActive,
+                ]}
+              >
+                {o.label}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -966,6 +980,33 @@ const styles = StyleSheet.create({
   deleteBtnText: { color: colors.pinkDeep, fontSize: 14, fontWeight: "700" },
 
   unitBlock: { marginBottom: 14 },
+  unitStatusBar: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  unitStatusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surface,
+  },
+  unitStatusChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  unitStatusChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  unitStatusChipTextActive: {
+    color: "#FFFFFF",
+  },
   row: {
     backgroundColor: colors.surface,
     borderRadius: radii.card,

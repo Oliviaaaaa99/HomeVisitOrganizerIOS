@@ -19,13 +19,14 @@ export type Property = {
   user_id: string;
   address: string;
   kind: "rental" | "for_sale";
-  status: "toured" | "shortlisted" | "rejected" | "archived";
   latitude?: number;
   longitude?: number;
   source_url?: string;
   created_at: string;
   updated_at: string;
 };
+
+export type UnitStatus = "toured" | "shortlisted" | "rejected" | "archived";
 
 export type Unit = {
   id: string;
@@ -37,6 +38,7 @@ export type Unit = {
   beds?: number;
   baths?: number;
   available_from?: string;
+  status: UnitStatus;
   created_at: string;
 };
 
@@ -228,11 +230,11 @@ export async function createProperty(input: CreatePropertyInput): Promise<Proper
   });
 }
 
-export async function updatePropertyStatus(
-  id: string,
-  status: Property["status"],
-): Promise<Property> {
-  return authed<Property>(`${API.PROPERTY}/v1/properties/${id}`, {
+export async function updateUnitStatus(
+  unitId: string,
+  status: UnitStatus,
+): Promise<Unit> {
+  return authed<Unit>(`${API.PROPERTY}/v1/units/${unitId}`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
@@ -283,6 +285,7 @@ export type UpdateUnitInput = {
   sqft?: number;
   beds?: number;
   baths?: number;
+  status?: UnitStatus;
 };
 
 export async function updateUnit(
