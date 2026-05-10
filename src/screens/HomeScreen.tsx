@@ -19,6 +19,7 @@ import {
   commitAvatar,
   deleteAvatar,
   deleteProperty,
+  deleteUnit,
   getMe,
   getProperty,
   listProperties,
@@ -61,6 +62,7 @@ export default function HomeScreen({
   const [kindFilter, setKindFilter] = useState<KindFilter>("any");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("any");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -203,6 +205,46 @@ export default function HomeScreen({
         },
       ],
       { cancelable: true, onDismiss: () => swipeRefs.current.get(p.id)?.close() },
+    );
+  }
+
+  function confirmDeleteUnit(u: Unit) {
+    Alert.alert(
+      "Delete this unit?",
+      `${unitTitle(u)}\n\nThis permanently removes the unit and its photos. The property and its other units stay.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeRefs.current.get(u.id)?.close(),
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingUnitId(u.id);
+            try {
+              await deleteUnit(u.id);
+              setItems((prev) =>
+                prev
+                  ? prev.map((p) =>
+                      p.id === u.property_id
+                        ? { ...p, units: p.units.filter((x) => x.id !== u.id) }
+                        : p,
+                    )
+                  : prev,
+              );
+              swipeRefs.current.delete(u.id);
+            } catch (err: any) {
+              Alert.alert("Delete failed", err?.message ?? String(err));
+              swipeRefs.current.get(u.id)?.close();
+            } finally {
+              setDeletingUnitId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true, onDismiss: () => swipeRefs.current.get(u.id)?.close() },
     );
   }
 
@@ -610,7 +652,9 @@ export default function HomeScreen({
                 }}
                 friction={2}
                 leftThreshold={40}
+                rightThreshold={40}
                 overshootLeft={false}
+                overshootRight={false}
                 renderLeftActions={() => (
                   <View style={styles.unitSwipeLeftContainer}>
                     <Pressable
@@ -639,6 +683,23 @@ export default function HomeScreen({
                     </Pressable>
                   </View>
                 )}
+                renderRightActions={() => (
+                  <View style={styles.unitSwipeRightContainer}>
+                    <Pressable
+                      onPress={() => confirmDeleteUnit(item)}
+                      style={({ pressed }) => [
+                        styles.swipeDelete,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      {deletingUnitId === item.id ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.swipeDeleteText}>Delete</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
                 onSwipeableWillOpen={() => {
                   swipeRefs.current.forEach((ref, id) => {
                     if (id !== item.id) ref?.close();
@@ -647,14 +708,20 @@ export default function HomeScreen({
               >
                 <Pressable
                   onPress={() => onOpenUnit(section.property.id, item.id)}
+                  disabled={deletingUnitId === item.id}
                   style={({ pressed }) => [
                     styles.unitRow,
                     isShortlisted && styles.unitRowShortlisted,
                     pressed && { opacity: 0.85 },
+                    deletingUnitId === item.id && { opacity: 0.5 },
                   ]}
                 >
                   <Text style={styles.unitEmoji}>
-                    {isShortlisted ? "★" : "🛋"}
+                    {isShortlisted
+                      ? "★"
+                      : section.property.kind === "for_sale"
+                        ? "🔑"
+                        : "🛋"}
                   </Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.unitTitle}>{unitTitle(item)}</Text>
@@ -1135,7 +1202,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSoft,
     borderLeftWidth: 4,
-    borderLeftColor: colors.cardAccent,
+    // Soft gray rail by default — only the shortlisted variant earns a
+    // saturated color (pink), so favorites stand out without every row
+    // shouting.
+    borderLeftColor: "#A8A8C0",
     flexDirection: "row",
     alignItems: "center",
   },
@@ -1148,6 +1218,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingLeft: 16,
     paddingRight: 8,
+    marginTop: 8,
+  },
+  unitSwipeRightContainer: {
+    justifyContent: "center",
+    paddingLeft: 8,
+    paddingRight: 4,
     marginTop: 8,
   },
   unitEmoji: {
