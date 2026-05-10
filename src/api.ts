@@ -163,11 +163,19 @@ export type Me = {
   provider: string;
   email_hash?: string;
   avatar_url?: string;
+  display_name?: string;
   created_at: string;
 };
 
 export async function getMe(): Promise<Me> {
   return authed<Me>(`${API.USER}/v1/users/me`);
+}
+
+export async function updateDisplayName(name: string): Promise<Me> {
+  return authed<Me>(`${API.USER}/v1/users/me`, {
+    method: "PATCH",
+    body: JSON.stringify({ display_name: name }),
+  });
 }
 
 export type AvatarPresign = {
