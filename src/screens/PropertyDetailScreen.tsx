@@ -813,26 +813,26 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 56,
     paddingHorizontal: 22,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   topNavRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  // Secondary nav pill (Back/Cancel — outline + soft fill)
+  // Secondary nav pill (Back/Cancel — outline only on neutral header)
   navPillSecondary: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radii.pill,
-    backgroundColor: "#FFFFFFB3",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
   },
   navPillSecondaryText: {
-    color: colors.primaryDeep,
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.3,

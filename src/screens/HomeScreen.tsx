@@ -775,11 +775,6 @@ export default function HomeScreen({
                     deletingUnitId === item.id && { opacity: 0.5 },
                   ]}
                 >
-                  <View pointerEvents="none" style={styles.unitSparkleCluster}>
-                    <Text style={[styles.sparkle, { top: 5, right: 8, fontSize: 12, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
-                    <Text style={[styles.sparkle, { top: 3, right: 22, fontSize: 7, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
-                    <Text style={[styles.sparkle, { top: 14, right: 16, fontSize: 8, opacity: 0.8, color: "#F5E9E0" }]}>✦</Text>
-                  </View>
                   <Text style={styles.unitEmoji}>
                     {section.property.kind === "for_sale" ? "🔑" : "🛋"}
                   </Text>
@@ -958,21 +953,20 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 64,
     paddingHorizontal: 22,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   headerInner: {
     flexDirection: "row",
     alignItems: "flex-end",
   },
   eyebrow: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    color: colors.primaryDeep,
+    color: colors.textMuted,
     textTransform: "uppercase",
-    letterSpacing: 1,
-    opacity: 0.85,
+    letterSpacing: 0.8,
   },
   titleRow: {
     flexDirection: "row",
@@ -1001,9 +995,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFFFFFD0",
+    backgroundColor: colors.bg,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -1013,7 +1007,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   avatarInitial: {
-    color: colors.primaryDeep,
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.3,
@@ -1287,18 +1281,15 @@ const styles = StyleSheet.create({
   cardShortlisted: {
     borderLeftColor: "#d674c7",
   },
-  // Family backdrop: a soft pale-lavender container that wraps the section
-  // header + all of its unit rows + footer. Three render hooks in SectionList
-  // each emit a chunk with this same bg + horizontal inset; the top chunk
-  // gets rounded top corners, the bottom (footer) gets rounded bottom corners.
-  // Looks like one continuous tray holding the property and its units.
+  // Family backdrop wraps each property's section header + units in a
+  // single visual tray so they read as one group. Neutral palette: light
+  // gray bg + thin gray hairline. The unit cards inside are pure white,
+  // so the tray reads as the page-level "frame" and the cards as the
+  // foreground.
   familyBackdrop: {
-    // Saturated enough that the tray reads as a distinct surface against
-    // the page bg (which is pale pink-cream) — the previous primarySoft
-    // was indistinguishable from the page and made the inside look white.
-    backgroundColor: "#E0D7FA",
+    backgroundColor: "#FAFAFB",
     paddingHorizontal: 10,
-    borderColor: "#C9BBEF",
+    borderColor: colors.border,
     borderLeftWidth: 1,
     borderRightWidth: 1,
   },
@@ -1306,20 +1297,17 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 4,
     borderTopWidth: 1,
-    borderTopColor: "#C9BBEF",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopColor: colors.border,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   familyBottom: {
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#C9BBEF",
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    // Explicit gap between this family and the next, instead of relying on
-    // SectionSeparatorComponent (which caused the inter-section spacing to
-    // visually collapse).
-    marginBottom: 22,
+    borderBottomColor: colors.border,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    marginBottom: 18,
   },
   // Section header inside the backdrop is just a label.
   sectionHeader: {
@@ -1354,39 +1342,25 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 6,
   },
-  // Unit row now wears the brand: lavender bg, hairline, sparkle cluster,
-  // shadow, kind/star emoji + status pill on the right. The decision unit
-  // is also the visual anchor.
+  // Unit row: clean white card with a thin gray border. Shortlisted gets
+  // a subtle purple tint + slightly heavier border. No left rail, no
+  // sparkles — the status pill on the right does the differentiating.
   unitRow: {
     marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    paddingRight: 18,
-    backgroundColor: colors.cardBg,
+    paddingRight: 14,
+    backgroundColor: colors.surface,
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderLeftWidth: 4,
-    // Soft gray rail by default — only the shortlisted variant earns a
-    // saturated color (pink), so favorites stand out without every row
-    // shouting.
-    borderLeftColor: "#A8A8C0",
-    overflow: "hidden",
+    borderColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     ...shadow.card,
   },
   unitRowShortlisted: {
-    borderColor: "#d674c7",
-    borderLeftColor: "#d674c7",
-    backgroundColor: "#FBE6F7",
-  },
-  unitSparkleCluster: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    width: 36,
-    height: 28,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   unitSwipeLeftContainer: {
     justifyContent: "center",

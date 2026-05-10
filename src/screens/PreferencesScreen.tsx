@@ -225,7 +225,13 @@ export default function PreferencesScreen({ onBack }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { paddingHorizontal: 18, paddingTop: 60, paddingBottom: 22 },
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: 60,
+    paddingBottom: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   navRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -236,9 +242,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radii.pill,
-    backgroundColor: "#FFFFFFB3",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  navPillText: { color: colors.primaryDeep, fontWeight: "700", fontSize: 14 },
+  navPillText: { color: colors.textPrimary, fontWeight: "700", fontSize: 14 },
   navPillPrimary: {
     paddingHorizontal: 16,
     paddingVertical: 6,
