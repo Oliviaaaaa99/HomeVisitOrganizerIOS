@@ -339,6 +339,53 @@ export async function updateNote(
   });
 }
 
+// --- ranking + preferences ---
+
+export type Preferences = {
+  work_address?: string;
+  work_lat?: number;
+  work_lng?: number;
+  budget_min_cents?: number;
+  budget_max_cents?: number;
+  min_beds?: number;
+  min_baths?: number;
+  min_sqft?: number;
+  weight_price?: number;
+  weight_size?: number;
+  weight_commute?: number;
+  updated_at?: string;
+};
+
+export async function getPreferences(): Promise<Preferences> {
+  return authed<Preferences>(`${API.RANKING}/v1/preferences`);
+}
+
+export async function savePreferences(p: Preferences): Promise<Preferences> {
+  return authed<Preferences>(`${API.RANKING}/v1/preferences`, {
+    method: "PUT",
+    body: JSON.stringify(p),
+  });
+}
+
+export type RankReason = { sign: "pro" | "con"; message: string };
+
+export type RankedUnit = {
+  unit_id: string;
+  property_id: string;
+  address: string;
+  unit_label?: string;
+  unit_type: string;
+  score: number;
+  reasons: RankReason[];
+};
+
+export async function computeRanking(): Promise<{ items: RankedUnit[] }> {
+  return authed<{ items: RankedUnit[] }>(
+    `${API.RANKING}/v1/rankings:compute`,
+    { method: "POST" },
+  );
+}
+
 // --- media (uploads + listing) ---
 
 export async function listMedia(
