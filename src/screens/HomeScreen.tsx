@@ -545,9 +545,6 @@ export default function HomeScreen({
           SectionSeparatorComponent={() => <View style={styles.sectionSep} />}
           renderSectionHeader={({ section }) => {
             const property = section.property;
-            const sectionHasShortlisted = property.units.some(
-              (u) => u.status === "shortlisted",
-            );
             return (
               <Swipeable
                 ref={(r) => {
@@ -601,9 +598,6 @@ export default function HomeScreen({
                   </View>
                   <View style={styles.sectionHeaderMetaRow}>
                     <Pill text={property.kind} />
-                    {sectionHasShortlisted ? (
-                      <Text style={styles.sectionStar}>★</Text>
-                    ) : null}
                   </View>
                 </Pressable>
               </Swipeable>
@@ -1188,11 +1182,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginTop: 6,
-  },
-  sectionStar: {
-    fontSize: 14,
-    color: "#d674c7",
-    fontWeight: "800",
   },
   // Unit row now wears the brand: lavender bg, hairline, sparkle cluster,
   // shadow, kind/star emoji + status pill on the right. The decision unit
