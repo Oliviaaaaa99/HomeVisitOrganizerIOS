@@ -43,7 +43,7 @@ export default function SignInScreen({ onSignedIn }: Props) {
 
   return (
     <LinearGradient
-      colors={[colors.pinkSoft, colors.bgAlt, colors.primarySoft]}
+      colors={[colors.surface, colors.bg]}
       style={styles.gradientBg}
     >
       <KeyboardAvoidingView
