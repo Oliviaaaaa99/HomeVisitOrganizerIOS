@@ -515,7 +515,7 @@ export default function HomeScreen({
           <Text style={styles.emptyTitle}>No properties yet</Text>
           <Text style={styles.emptyHint}>
             Tap{" "}
-            <Text style={styles.emptyHintEm}>+ Add</Text>{" "}
+            <Text style={styles.emptyHintEm}>+ Add property</Text>{" "}
             to track your first place. Capture flow (camera, photos) ships in Tier
             2.
           </Text>
@@ -526,7 +526,7 @@ export default function HomeScreen({
           <Text style={styles.emptyTitle}>Nothing matches</Text>
           <Text style={styles.emptyHint}>
             Loosen the filters above or add one with{" "}
-            <Text style={styles.emptyHintEm}>+ Add</Text>.
+            <Text style={styles.emptyHintEm}>+ Add property</Text>.
           </Text>
         </View>
       ) : (
@@ -724,7 +724,7 @@ export default function HomeScreen({
         />
       )}
 
-      {/* Floating + Add button */}
+      {/* Floating + Add property button */}
       <Pressable
         onPress={onAddProperty}
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
@@ -735,7 +735,7 @@ export default function HomeScreen({
           end={{ x: 1, y: 1 }}
           style={styles.fabInner}
         >
-          <Text style={styles.fabText}>+ Add</Text>
+          <Text style={styles.fabText}>+ Add property</Text>
         </LinearGradient>
       </Pressable>
     </View>
