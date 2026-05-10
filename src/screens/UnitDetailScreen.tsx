@@ -18,10 +18,14 @@ import {
   View,
 } from "react-native";
 import {
+  createUnitNote,
+  deleteNote,
   deleteUnit,
   getProperty,
+  updateNote,
   updateUnit,
   updateUnitStatus,
+  type Note,
   type PropertyDetail,
   type Unit,
   type UnitStatus,
@@ -237,6 +241,12 @@ export default function UnitDetailScreen({
           <PhotoStrip unitId={unit.id} />
         </View>
 
+        <UnitNotesSection
+          unitId={unit.id}
+          notes={property.notes.filter((n) => n.unit_id === unit.id)}
+          onChanged={reload}
+        />
+
         <Pressable
           onPress={handleDelete}
           disabled={busy === "delete"}
@@ -404,6 +414,189 @@ function UnitEditor({
   );
 }
 
+function UnitNotesSection({
+  unitId,
+  notes,
+  onChanged,
+}: {
+  unitId: string;
+  notes: Note[];
+  onChanged: () => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+
+  async function add() {
+    const body = draft.trim();
+    if (!body || busy) return;
+    setBusy(true);
+    try {
+      await createUnitNote(unitId, body);
+      setDraft("");
+      setAdding(false);
+      await onChanged();
+    } catch (err: any) {
+      Alert.alert("Couldn't add note", err?.message ?? String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEdit(noteId: string) {
+    const body = editDraft.trim();
+    if (!body || busy) return;
+    setBusy(true);
+    try {
+      await updateNote(noteId, body);
+      setEditing(null);
+      setEditDraft("");
+      await onChanged();
+    } catch (err: any) {
+      Alert.alert("Couldn't save", err?.message ?? String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmDelete(noteId: string) {
+    Alert.alert("Delete this note?", "This is permanent.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await deleteNote(noteId);
+            await onChanged();
+          } catch (err: any) {
+            Alert.alert("Couldn't delete", err?.message ?? String(err));
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
+  }
+
+  return (
+    <View style={styles.notesSection}>
+      <View style={styles.notesHeader}>
+        <Text style={styles.sectionTitle}>Notes</Text>
+        <Pressable
+          onPress={() => {
+            setAdding((a) => !a);
+            setEditing(null);
+            setDraft("");
+          }}
+          hitSlop={6}
+        >
+          <Text style={styles.addLink}>{adding ? "− Cancel" : "+ Add note"}</Text>
+        </Pressable>
+      </View>
+
+      {adding ? (
+        <View style={styles.noteEditor}>
+          <TextInput
+            style={styles.noteInput}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Kitchen too small, balcony faces east, …"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            autoFocus
+          />
+          <Pressable
+            onPress={add}
+            disabled={busy || !draft.trim()}
+            style={({ pressed }) => [
+              styles.noteSave,
+              (!draft.trim() || busy) && { opacity: 0.5 },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            {busy ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.noteSaveText}>Save</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : null}
+
+      {notes.length === 0 && !adding ? (
+        <Text style={styles.notesEmpty}>No notes yet for this unit.</Text>
+      ) : null}
+
+      {notes.map((n) =>
+        editing === n.id ? (
+          <View key={n.id} style={styles.noteEditor}>
+            <TextInput
+              style={styles.noteInput}
+              value={editDraft}
+              onChangeText={setEditDraft}
+              multiline
+              autoFocus
+            />
+            <View style={styles.noteEditorRow}>
+              <Pressable
+                onPress={() => {
+                  setEditing(null);
+                  setEditDraft("");
+                }}
+                disabled={busy}
+                style={({ pressed }) => [
+                  styles.noteCancel,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={styles.noteCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => saveEdit(n.id)}
+                disabled={busy || !editDraft.trim()}
+                style={({ pressed }) => [
+                  styles.noteSave,
+                  (!editDraft.trim() || busy) && { opacity: 0.5 },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.noteSaveText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View key={n.id} style={styles.noteCard}>
+            <Text style={styles.noteBody}>{n.body}</Text>
+            <View style={styles.noteActions}>
+              <Pressable
+                onPress={() => {
+                  setEditing(n.id);
+                  setEditDraft(n.body);
+                  setAdding(false);
+                }}
+                hitSlop={6}
+              >
+                <Text style={styles.noteActionLink}>Edit</Text>
+              </Pressable>
+              <Pressable onPress={() => confirmDelete(n.id)} hitSlop={6}>
+                <Text style={styles.noteActionLinkDanger}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        ),
+      )}
+    </View>
+  );
+}
+
 function unitTitle(u: Unit): string {
   if (u.unit_label?.trim()) return u.unit_label;
   switch (u.unit_type) {
@@ -549,6 +742,101 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.textPrimary,
     marginBottom: 6,
+  },
+
+  notesSection: { marginTop: 22 },
+  notesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  addLink: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.primaryDeep,
+  },
+  notesEmpty: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontStyle: "italic",
+    paddingVertical: 8,
+  },
+  noteEditor: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: 12,
+    marginBottom: 10,
+  },
+  noteInput: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  noteEditorRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
+  },
+  noteCancel: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  noteCancelText: {
+    color: colors.textSecondary,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  noteSave: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    minWidth: 70,
+    marginTop: 8,
+    alignSelf: "flex-end",
+  },
+  noteSaveText: {
+    color: colors.textInverse,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  noteCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: 14,
+    marginBottom: 8,
+  },
+  noteBody: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  noteActions: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 8,
+  },
+  noteActionLink: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primaryDeep,
+  },
+  noteActionLinkDanger: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.pinkDeep,
   },
 
   deleteBtn: {
