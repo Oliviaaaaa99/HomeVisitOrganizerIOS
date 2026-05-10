@@ -705,11 +705,7 @@ export default function HomeScreen({
                     <Text style={[styles.sparkle, { top: 14, right: 16, fontSize: 8, opacity: 0.8, color: "#F5E9E0" }]}>✦</Text>
                   </View>
                   <Text style={styles.unitEmoji}>
-                    {isShortlisted
-                      ? "★"
-                      : section.property.kind === "for_sale"
-                        ? "🔑"
-                        : "🛋"}
+                    {section.property.kind === "for_sale" ? "🔑" : "🛋"}
                   </Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.unitTitle}>{unitTitle(item)}</Text>
