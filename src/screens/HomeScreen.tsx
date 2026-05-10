@@ -542,86 +542,93 @@ export default function HomeScreen({
               tintColor={colors.primary}
             />
           }
-          SectionSeparatorComponent={() => <View style={styles.sectionSep} />}
           renderSectionHeader={({ section }) => {
             const property = section.property;
             return (
-              <Swipeable
-                ref={(r) => {
-                  if (r) swipeRefs.current.set(property.id, r);
-                  else swipeRefs.current.delete(property.id);
-                }}
-                friction={2}
-                rightThreshold={40}
-                overshootRight={false}
-                renderRightActions={() => (
-                  <View style={styles.swipeActionContainer}>
-                    <Pressable
-                      onPress={() => confirmDelete(property)}
-                      style={({ pressed }) => [
-                        styles.swipeDelete,
-                        pressed && { opacity: 0.85 },
-                      ]}
-                    >
-                      {deletingId === property.id ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                      ) : (
-                        <Text style={styles.swipeDeleteText}>Delete</Text>
-                      )}
-                    </Pressable>
-                  </View>
-                )}
-                onSwipeableWillOpen={() => {
-                  swipeRefs.current.forEach((ref, id) => {
-                    if (id !== property.id) ref?.close();
-                  });
-                }}
-              >
-                <Pressable
-                  onPress={() => onOpenProperty(property.id)}
-                  disabled={deletingId === property.id}
-                  style={({ pressed }) => [
-                    styles.sectionHeader,
-                    pressed && { opacity: 0.7 },
-                    deletingId === property.id && { opacity: 0.5 },
-                  ]}
+              <View style={[styles.familyBackdrop, styles.familyTop]}>
+                <Swipeable
+                  ref={(r) => {
+                    if (r) swipeRefs.current.set(property.id, r);
+                    else swipeRefs.current.delete(property.id);
+                  }}
+                  friction={2}
+                  rightThreshold={40}
+                  overshootRight={false}
+                  renderRightActions={() => (
+                    <View style={styles.swipeActionContainer}>
+                      <Pressable
+                        onPress={() => confirmDelete(property)}
+                        style={({ pressed }) => [
+                          styles.swipeDelete,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        {deletingId === property.id ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.swipeDeleteText}>Delete</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
+                  onSwipeableWillOpen={() => {
+                    swipeRefs.current.forEach((ref, id) => {
+                      if (id !== property.id) ref?.close();
+                    });
+                  }}
                 >
-                  <View style={styles.sectionHeaderTopRow}>
-                    <Text style={styles.sectionAddress} numberOfLines={2}>
-                      {property.address}
-                    </Text>
-                    <Text style={styles.sectionUnitCount}>
-                      {property.units.length === 0
-                        ? "No units"
-                        : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
-                    </Text>
-                  </View>
-                  <View style={styles.sectionHeaderMetaRow}>
-                    <Pill text={property.kind} />
-                  </View>
-                </Pressable>
-              </Swipeable>
+                  <Pressable
+                    onPress={() => onOpenProperty(property.id)}
+                    disabled={deletingId === property.id}
+                    style={({ pressed }) => [
+                      styles.sectionHeader,
+                      pressed && { opacity: 0.7 },
+                      deletingId === property.id && { opacity: 0.5 },
+                    ]}
+                  >
+                    <View style={styles.sectionHeaderTopRow}>
+                      <Text style={styles.sectionAddress} numberOfLines={2}>
+                        {property.address}
+                      </Text>
+                      <Text style={styles.sectionUnitCount}>
+                        {property.units.length === 0
+                          ? "No units"
+                          : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
+                      </Text>
+                    </View>
+                    <View style={styles.sectionHeaderMetaRow}>
+                      <Pill text={property.kind} />
+                    </View>
+                  </Pressable>
+                </Swipeable>
+              </View>
             );
           }}
+          renderSectionFooter={() => (
+            <View style={[styles.familyBackdrop, styles.familyBottom]} />
+          )}
           renderItem={({ item, section }) => {
             // Sections always carry at least one item — when the property has
             // no units, we render an "Add unit" placeholder row.
             if ("_empty" in item) {
               return (
-                <Pressable
-                  onPress={() => onOpenProperty(section.property.id)}
-                  style={({ pressed }) => [
-                    styles.unitRow,
-                    styles.unitRowEmpty,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <Text style={styles.unitRowEmptyText}>+ Add a unit</Text>
-                </Pressable>
+                <View style={styles.familyBackdrop}>
+                  <Pressable
+                    onPress={() => onOpenProperty(section.property.id)}
+                    style={({ pressed }) => [
+                      styles.unitRow,
+                      styles.unitRowEmpty,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <Text style={styles.unitRowEmptyText}>+ Add a unit</Text>
+                  </Pressable>
+                </View>
               );
             }
             const isShortlisted = item.status === "shortlisted";
             return (
+              <View style={styles.familyBackdrop}>
               <Swipeable
                 ref={(r) => {
                   if (r) swipeRefs.current.set(item.id, r);
@@ -711,6 +718,7 @@ export default function HomeScreen({
                   <Text style={styles.unitChevron}>›</Text>
                 </Pressable>
               </Swipeable>
+              </View>
             );
           }}
         />
@@ -1085,7 +1093,6 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
-  sectionSep: { height: 22 },
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
@@ -1147,14 +1154,45 @@ const styles = StyleSheet.create({
   cardShortlisted: {
     borderLeftColor: "#d674c7",
   },
-  // Section header reuses the property-card look so the visual identity
-  // (lavender bg, sparkle cluster, pink rail when shortlisted) carries over
-  // Section header used to be a heavy lavender card; now it's just a label
-  // — the unit cards below are the visual focus.
+  // Family backdrop: a soft pale-lavender container that wraps the section
+  // header + all of its unit rows + footer. Three render hooks in SectionList
+  // each emit a chunk with this same bg + horizontal inset; the top chunk
+  // gets rounded top corners, the bottom (footer) gets rounded bottom corners.
+  // Looks like one continuous tray holding the property and its units.
+  familyBackdrop: {
+    // Saturated enough that the tray reads as a distinct surface against
+    // the page bg (which is pale pink-cream) — the previous primarySoft
+    // was indistinguishable from the page and made the inside look white.
+    backgroundColor: "#E0D7FA",
+    paddingHorizontal: 10,
+    borderColor: "#C9BBEF",
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+  },
+  familyTop: {
+    paddingTop: 14,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#C9BBEF",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  familyBottom: {
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#C9BBEF",
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    // Explicit gap between this family and the next, instead of relying on
+    // SectionSeparatorComponent (which caused the inter-section spacing to
+    // visually collapse).
+    marginBottom: 22,
+  },
+  // Section header inside the backdrop is just a label.
   sectionHeader: {
-    paddingHorizontal: 4,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingHorizontal: 6,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   sectionHeaderShortlisted: {},
   sectionHeaderTopRow: {
@@ -1187,9 +1225,7 @@ const styles = StyleSheet.create({
   // shadow, kind/star emoji + status pill on the right. The decision unit
   // is also the visual anchor.
   unitRow: {
-    marginTop: 10,
-    marginLeft: 4,
-    marginRight: 4,
+    marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 14,
     paddingRight: 18,
@@ -1223,13 +1259,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingLeft: 4,
     paddingRight: 8,
-    marginTop: 10,
+    marginTop: 8,
   },
   unitSwipeRightContainer: {
     justifyContent: "center",
     paddingLeft: 8,
     paddingRight: 4,
-    marginTop: 10,
+    marginTop: 8,
   },
   unitEmoji: {
     fontSize: 18,
