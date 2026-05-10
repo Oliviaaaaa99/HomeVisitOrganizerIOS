@@ -585,42 +585,25 @@ export default function HomeScreen({
                   disabled={deletingId === property.id}
                   style={({ pressed }) => [
                     styles.sectionHeader,
-                    // Soft hint that this section has at least one shortlisted
-                    // unit — pink rail mirrors the unit-row star without
-                    // promising property-level state.
-                    sectionHasShortlisted && styles.sectionHeaderShortlisted,
-                    pressed && { transform: [{ scale: 0.99 }] },
+                    pressed && { opacity: 0.7 },
                     deletingId === property.id && { opacity: 0.5 },
                   ]}
                 >
-                  <View pointerEvents="none" style={styles.sparkleCluster}>
-                    <Text style={[styles.sparkle, { top: 6, right: 10, fontSize: 16, opacity: 0.95, color: "#F5E9E0" }]}>✦</Text>
-                    <Text style={[styles.sparkle, { top: 3, right: 28, fontSize: 9, opacity: 0.75, color: "#E5E0EE" }]}>✧</Text>
-                    <Text style={[styles.sparkle, { top: 14, right: 22, fontSize: 11, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
-                    <Text style={[styles.sparkle, { top: 8, right: 44, fontSize: 8, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
-                    <Text style={[styles.sparkle, { top: 20, right: 6, fontSize: 10, opacity: 0.85, color: "#F5E9E0" }]}>✧</Text>
-                    <Text style={[styles.sparkle, { top: 18, right: 38, fontSize: 8, opacity: 0.75, color: "#E5E0EE" }]}>✦</Text>
+                  <View style={styles.sectionHeaderTopRow}>
+                    <Text style={styles.sectionAddress} numberOfLines={2}>
+                      {property.address}
+                    </Text>
+                    <Text style={styles.sectionUnitCount}>
+                      {property.units.length === 0
+                        ? "No units"
+                        : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
+                    </Text>
                   </View>
-                  <View style={styles.cardRow}>
-                    <View style={styles.kindBadge}>
-                      <Text style={styles.kindEmoji}>
-                        {KIND_EMOJI[property.kind] ?? "🏠"}
-                      </Text>
-                    </View>
-                    <View style={styles.cardMain}>
-                      <Text style={styles.address} numberOfLines={2}>
-                        {property.address}
-                      </Text>
-                      <View style={styles.badges}>
-                        <Pill text={property.kind} />
-                      </View>
-                      <Text style={styles.unitCount}>
-                        {property.units.length === 0
-                          ? "No units yet"
-                          : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
-                      </Text>
-                    </View>
-                    <Text style={styles.chevron}>›</Text>
+                  <View style={styles.sectionHeaderMetaRow}>
+                    <Pill text={property.kind} />
+                    {sectionHasShortlisted ? (
+                      <Text style={styles.sectionStar}>★</Text>
+                    ) : null}
                   </View>
                 </Pressable>
               </Swipeable>
@@ -716,6 +699,11 @@ export default function HomeScreen({
                     deletingUnitId === item.id && { opacity: 0.5 },
                   ]}
                 >
+                  <View pointerEvents="none" style={styles.unitSparkleCluster}>
+                    <Text style={[styles.sparkle, { top: 5, right: 8, fontSize: 12, opacity: 0.9, color: "#F5E9E0" }]}>✦</Text>
+                    <Text style={[styles.sparkle, { top: 3, right: 22, fontSize: 7, opacity: 0.7, color: "#E5E0EE" }]}>✧</Text>
+                    <Text style={[styles.sparkle, { top: 14, right: 16, fontSize: 8, opacity: 0.8, color: "#F5E9E0" }]}>✦</Text>
+                  </View>
                   <Text style={styles.unitEmoji}>
                     {isShortlisted
                       ? "★"
@@ -1107,7 +1095,7 @@ const styles = StyleSheet.create({
 
   listContent: { padding: 18, paddingTop: 14, paddingBottom: 100 },
   sep: { height: 14 },
-  sectionSep: { height: 18 },
+  sectionSep: { height: 22 },
   swipeActionContainer: {
     justifyContent: "center",
     paddingLeft: 8,
@@ -1171,60 +1159,92 @@ const styles = StyleSheet.create({
   },
   // Section header reuses the property-card look so the visual identity
   // (lavender bg, sparkle cluster, pink rail when shortlisted) carries over
-  // from the previous design.
+  // Section header used to be a heavy lavender card; now it's just a label
+  // — the unit cards below are the visual focus.
   sectionHeader: {
-    backgroundColor: colors.cardBg,
-    borderRadius: radii.card,
-    padding: 16,
-    paddingRight: 22,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: "hidden",
-    ...shadow.card,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
-  // Reserved for future use (e.g. a soft "any shortlisted unit here" hint)
-  // — currently a no-op so we don't double-signal alongside the unit rails.
   sectionHeaderShortlisted: {},
-  unitCount: {
-    marginTop: 6,
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: "600",
+  sectionHeaderTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
   },
+  sectionAddress: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "800",
+    color: colors.textPrimary,
+    letterSpacing: 0.1,
+  },
+  sectionUnitCount: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  sectionHeaderMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  sectionStar: {
+    fontSize: 14,
+    color: "#d674c7",
+    fontWeight: "800",
+  },
+  // Unit row now wears the brand: lavender bg, hairline, sparkle cluster,
+  // shadow, kind/star emoji + status pill on the right. The decision unit
+  // is also the visual anchor.
   unitRow: {
-    marginTop: 8,
-    marginLeft: 16,
+    marginTop: 10,
+    marginLeft: 4,
     marginRight: 4,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    paddingRight: 18,
+    backgroundColor: colors.cardBg,
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.cardBorder,
     borderLeftWidth: 4,
     // Soft gray rail by default — only the shortlisted variant earns a
     // saturated color (pink), so favorites stand out without every row
     // shouting.
     borderLeftColor: "#A8A8C0",
+    overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
+    ...shadow.card,
   },
   unitRowShortlisted: {
     borderColor: "#d674c7",
     borderLeftColor: "#d674c7",
-    backgroundColor: "#FFF4FB",
+    backgroundColor: "#FBE6F7",
+  },
+  unitSparkleCluster: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 36,
+    height: 28,
   },
   unitSwipeLeftContainer: {
     justifyContent: "center",
-    paddingLeft: 16,
+    paddingLeft: 4,
     paddingRight: 8,
-    marginTop: 8,
+    marginTop: 10,
   },
   unitSwipeRightContainer: {
     justifyContent: "center",
     paddingLeft: 8,
     paddingRight: 4,
-    marginTop: 8,
+    marginTop: 10,
   },
   unitEmoji: {
     fontSize: 18,
@@ -1247,9 +1267,12 @@ const styles = StyleSheet.create({
   },
   unitRowEmpty: {
     borderStyle: "dashed",
+    borderColor: colors.primary,
+    borderLeftColor: colors.primary,
     backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
+    paddingVertical: 18,
   },
   unitRowEmptyText: {
     fontSize: 13,
