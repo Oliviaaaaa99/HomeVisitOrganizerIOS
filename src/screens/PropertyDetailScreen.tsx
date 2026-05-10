@@ -131,6 +131,10 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
     );
   }
 
+  // This screen only deals with notes scoped to the property as a whole;
+  // unit-scoped notes are surfaced on UnitDetailScreen.
+  const propertyNotes = data.notes.filter((n) => !n.unit_id);
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={colors.gradientHeader} style={styles.header}>
@@ -284,11 +288,12 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
           )}
         </View>
 
-        {/* Notes */}
+        {/* Property-level notes — about the place as a whole. Per-unit notes
+            (e.g. "Studio's kitchen is small") live on UnitDetailScreen. */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Notes · {data.notes.length}
+              About this place · {propertyNotes.length}
             </Text>
             <Pressable
               onPress={() => {
@@ -314,10 +319,10 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
             />
           ) : null}
 
-          {data.notes.length === 0 && noteMode !== "new" ? (
-            <Text style={styles.empty}>No notes</Text>
+          {propertyNotes.length === 0 && noteMode !== "new" ? (
+            <Text style={styles.empty}>No notes about the place yet.</Text>
           ) : (
-            data.notes.map((n) =>
+            propertyNotes.map((n) =>
               noteMode === n.id ? (
                 <NoteForm
                   key={n.id}

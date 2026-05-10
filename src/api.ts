@@ -45,6 +45,7 @@ export type Unit = {
 export type Note = {
   id: string;
   property_id: string;
+  unit_id?: string;
   body: string;
   created_at: string;
 };
@@ -313,6 +314,16 @@ export async function createNote(
   body: string,
 ): Promise<Note> {
   return authed<Note>(`${API.PROPERTY}/v1/properties/${propertyId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function createUnitNote(
+  unitId: string,
+  body: string,
+): Promise<Note> {
+  return authed<Note>(`${API.PROPERTY}/v1/units/${unitId}/notes`, {
     method: "POST",
     body: JSON.stringify({ body }),
   });
