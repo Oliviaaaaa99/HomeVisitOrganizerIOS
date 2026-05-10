@@ -12,6 +12,7 @@ import {
   SectionList,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
@@ -24,6 +25,7 @@ import {
   getProperty,
   listProperties,
   presignAvatar,
+  updateDisplayName,
   updateUnitStatus,
   type Property,
   type PropertyDetail,
@@ -72,19 +74,40 @@ export default function HomeScreen({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
   // Track open Swipeables so we can close one if a new card is dragged.
   const swipeRefs = useRef<Map<string, Swipeable>>(new Map());
 
   useEffect(() => {
     loadUserEmail().then(setUserEmail);
     getMe()
-      .then((me) => setAvatarUrl(me.avatar_url ?? null))
+      .then((me) => {
+        setAvatarUrl(me.avatar_url ?? null);
+        setDisplayName(me.display_name ?? null);
+        setNameDraft(me.display_name ?? "");
+      })
       .catch(() => {
-        // If /me fails (offline, expired), avatar stays null and we fall back
-        // to the initial-letter avatar. Other API calls will surface the
-        // real auth error.
+        // If /me fails (offline, expired), avatar / name stay null and we
+        // fall back to the email-derived initial. Other API calls will
+        // surface the real auth error.
       });
   }, []);
+
+  async function handleSaveName() {
+    const next = nameDraft.trim();
+    if (next === (displayName ?? "")) return;
+    setNameBusy(true);
+    try {
+      const me = await updateDisplayName(next);
+      setDisplayName(me.display_name ?? null);
+    } catch (err: any) {
+      Alert.alert("Couldn't save name", err?.message ?? String(err));
+    } finally {
+      setNameBusy(false);
+    }
+  }
 
   async function handleChangeAvatar() {
     if (avatarBusy) return;
@@ -358,7 +381,9 @@ export default function HomeScreen({
       >
         <View style={styles.headerInner}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.eyebrow}>My collection</Text>
+            <Text style={styles.eyebrow}>
+              {displayName ? `${displayName}'s collection` : "My collection"}
+            </Text>
             <View style={styles.titleRow}>
               <Text style={styles.title}>Properties</Text>
               <Text style={styles.titleEmoji}>🏠</Text>
@@ -378,7 +403,7 @@ export default function HomeScreen({
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
             ) : (
-              <Text style={styles.avatarInitial}>{initialFor(userEmail)}</Text>
+              <Text style={styles.avatarInitial}>{initialFor(displayName ?? userEmail)}</Text>
             )}
           </Pressable>
         </View>
@@ -403,7 +428,7 @@ export default function HomeScreen({
                   <Image source={{ uri: avatarUrl }} style={styles.sheetAvatarImg} />
                 ) : (
                   <Text style={styles.sheetAvatarInitial}>
-                    {initialFor(userEmail)}
+                    {initialFor(displayName ?? userEmail)}
                   </Text>
                 )}
               </View>
@@ -432,6 +457,40 @@ export default function HomeScreen({
                 </Pressable>
               ) : null}
             </View>
+
+            <Text style={styles.sheetEyebrow}>Display name</Text>
+            <View style={styles.nameRow}>
+              <TextInput
+                style={styles.nameInput}
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                placeholder="Your name"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={handleSaveName}
+              />
+              <Pressable
+                onPress={handleSaveName}
+                disabled={
+                  nameBusy || nameDraft.trim() === (displayName ?? "")
+                }
+                style={({ pressed }) => [
+                  styles.nameSave,
+                  (nameBusy || nameDraft.trim() === (displayName ?? "")) && {
+                    opacity: 0.5,
+                  },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                {nameBusy ? (
+                  <ActivityIndicator color={colors.textInverse} size="small" />
+                ) : (
+                  <Text style={styles.nameSaveText}>Save</Text>
+                )}
+              </Pressable>
+            </View>
+
             <Text style={styles.sheetEyebrow}>Signed in as</Text>
             <Text style={styles.sheetEmail} numberOfLines={1}>
               {userEmail ?? "(sign out and back in to refresh)"}
@@ -1031,6 +1090,37 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
     marginBottom: 22,
+  },
+  nameRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+    marginBottom: 18,
+    alignItems: "center",
+  },
+  nameInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radii.input,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.textPrimary,
+    backgroundColor: colors.bgAlt,
+  },
+  nameSave: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    minWidth: 64,
+    alignItems: "center",
+  },
+  nameSaveText: {
+    color: colors.textInverse,
+    fontWeight: "800",
+    fontSize: 13,
   },
   sheetPrefs: {
     paddingVertical: 12,
