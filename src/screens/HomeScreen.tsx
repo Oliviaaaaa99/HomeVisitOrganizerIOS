@@ -37,6 +37,8 @@ type Props = {
   onOpenProperty: (id: string) => void;
   onOpenUnit: (propertyId: string, unitId: string) => void;
   onAddProperty: () => void;
+  onOpenRanked: () => void;
+  onOpenPreferences: () => void;
   onSignedOut: () => void;
   reloadKey: number;
 };
@@ -54,6 +56,8 @@ export default function HomeScreen({
   onOpenProperty,
   onOpenUnit,
   onAddProperty,
+  onOpenRanked,
+  onOpenPreferences,
   onSignedOut,
   reloadKey,
 }: Props) {
@@ -435,6 +439,18 @@ export default function HomeScreen({
             <Pressable
               onPress={() => {
                 setAccountSheetOpen(false);
+                onOpenPreferences();
+              }}
+              style={({ pressed }) => [
+                styles.sheetPrefs,
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Text style={styles.sheetPrefsText}>⚙ Preferences</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setAccountSheetOpen(false);
                 handleSignOut();
               }}
               style={({ pressed }) => [
@@ -724,20 +740,32 @@ export default function HomeScreen({
         />
       )}
 
-      {/* Floating + Add property button */}
-      <Pressable
-        onPress={onAddProperty}
-        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
-      >
-        <LinearGradient
-          colors={colors.gradientButton}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabInner}
+      {/* Floating bottom-right cluster: ✨ Rank + Add property */}
+      <View style={styles.fabCluster}>
+        <Pressable
+          onPress={onOpenRanked}
+          style={({ pressed }) => [
+            styles.rankFab,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityLabel="AI ranking"
         >
-          <Text style={styles.fabText}>+ Add property</Text>
-        </LinearGradient>
-      </Pressable>
+          <Text style={styles.rankFabText}>✨ Rank</Text>
+        </Pressable>
+        <Pressable
+          onPress={onAddProperty}
+          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+        >
+          <LinearGradient
+            colors={colors.gradientButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabInner}
+          >
+            <Text style={styles.fabText}>+ Add property</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -1003,6 +1031,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
     marginBottom: 22,
+  },
+  sheetPrefs: {
+    paddingVertical: 12,
+    borderRadius: radii.button,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  sheetPrefsText: {
+    color: colors.primaryDeep,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   sheetSignOut: {
     paddingVertical: 14,
@@ -1340,10 +1383,30 @@ const styles = StyleSheet.create({
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill },
   pillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 
-  fab: {
+  fabCluster: {
     position: "absolute",
     bottom: 30,
     right: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  rankFab: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    ...shadow.card,
+  },
+  rankFabText: {
+    color: colors.primaryDeep,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  fab: {
     borderRadius: radii.pill,
     ...shadow.card,
   },

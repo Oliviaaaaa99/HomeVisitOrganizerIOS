@@ -12,4 +12,5 @@ export const API = {
   USER: `${HOST}:8080`,
   PROPERTY: `${HOST}:8082`,
   MEDIA: `${HOST}:8083`,
+  RANKING: `${HOST}:8084`,
 };

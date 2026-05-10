@@ -6,13 +6,15 @@ import { setOnAuthExpired } from "./src/api";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import PreferencesScreen from "./src/screens/PreferencesScreen";
 import PropertyDetailScreen from "./src/screens/PropertyDetailScreen";
+import RankedScreen from "./src/screens/RankedScreen";
 import SignInScreen from "./src/screens/SignInScreen";
 import UnitDetailScreen from "./src/screens/UnitDetailScreen";
 import { loadAccess } from "./src/storage";
 
-// Tier 1 keeps routing absurdly simple — six screens, one state machine.
-// Adding expo-router can wait until we have ≥8 screens or deep links.
+// Tier 1 keeps routing simple — eight screens, one state machine.
+// Adding expo-router can wait until we have deep links or back-stacks.
 type Screen =
   | { name: "loading" }
   | { name: "sign-in" }
@@ -20,7 +22,9 @@ type Screen =
   | { name: "add" }
   | { name: "detail"; propertyId: string }
   | { name: "edit"; propertyId: string }
-  | { name: "unit-detail"; propertyId: string; unitId: string };
+  | { name: "unit-detail"; propertyId: string; unitId: string }
+  | { name: "ranked" }
+  | { name: "preferences"; from: "home" | "ranked" };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
@@ -59,6 +63,10 @@ export default function App() {
             setScreen({ name: "unit-detail", propertyId, unitId })
           }
           onAddProperty={() => setScreen({ name: "add" })}
+          onOpenRanked={() => setScreen({ name: "ranked" })}
+          onOpenPreferences={() =>
+            setScreen({ name: "preferences", from: "home" })
+          }
           onSignedOut={() => setScreen({ name: "sign-in" })}
         />
       )}
@@ -104,6 +112,28 @@ export default function App() {
           }}
           onViewProperty={() =>
             setScreen({ name: "detail", propertyId: screen.propertyId })
+          }
+        />
+      )}
+      {screen.name === "ranked" && (
+        <RankedScreen
+          onBack={() => setScreen({ name: "home" })}
+          onOpenUnit={(propertyId, unitId) =>
+            setScreen({ name: "unit-detail", propertyId, unitId })
+          }
+          onOpenPreferences={() =>
+            setScreen({ name: "preferences", from: "ranked" })
+          }
+        />
+      )}
+      {screen.name === "preferences" && (
+        <PreferencesScreen
+          onBack={() =>
+            setScreen(
+              screen.from === "ranked"
+                ? { name: "ranked" }
+                : { name: "home" },
+            )
           }
         />
       )}
