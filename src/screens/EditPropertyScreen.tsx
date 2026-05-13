@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { getProperty, updateProperty, type PropertyDetail } from "../api";
 import { geocode, type GeocodingResult } from "../geocoding";
+import { useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -27,6 +28,7 @@ export default function EditPropertyScreen({
   onCancel,
   onSaved,
 }: Props) {
+  const { t } = useT();
   const [original, setOriginal] = useState<PropertyDetail | null>(null);
 
   const [address, setAddress] = useState("");
@@ -57,7 +59,7 @@ export default function EditPropertyScreen({
         setLongitude(data.longitude !== undefined ? String(data.longitude) : "");
         setSourceUrl(data.source_url ?? "");
       } catch (err: any) {
-        Alert.alert("Load failed", err?.message ?? String(err));
+        Alert.alert(t("common.loadFailed"), err?.message ?? String(err));
         onCancel();
       }
     })();
@@ -102,7 +104,7 @@ export default function EditPropertyScreen({
 
   async function handleSave() {
     if (!address.trim()) {
-      Alert.alert("Missing address", "Address is required.");
+      Alert.alert(t("addProperty.missingAddressTitle"), t("addProperty.missingAddressBody"));
       return;
     }
     if (!original) return;
@@ -133,7 +135,7 @@ export default function EditPropertyScreen({
     }
 
     if (Object.keys(patch).length === 0) {
-      Alert.alert("No changes", "Nothing was edited.");
+      Alert.alert(t("editProperty.noChangesTitle"), t("editProperty.noChangesBody"));
       return;
     }
 
@@ -142,7 +144,7 @@ export default function EditPropertyScreen({
       await updateProperty(propertyId, patch);
       onSaved();
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -168,9 +170,9 @@ export default function EditPropertyScreen({
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillSecondaryText}>Cancel</Text>
+            <Text style={styles.navPillSecondaryText}>{t("common.cancel")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Edit property</Text>
+          <Text style={styles.headerTitle}>{t("editProperty.headerTitle")}</Text>
           <Pressable
             onPress={handleSave}
             disabled={busy || !address.trim()}
@@ -181,7 +183,7 @@ export default function EditPropertyScreen({
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillPrimaryText}>Save</Text>
+            <Text style={styles.navPillPrimaryText}>{t("common.save")}</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -196,12 +198,12 @@ export default function EditPropertyScreen({
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Field label="Address *">
+          <Field label={t("addProperty.addressLabel")}>
             <TextInput
               style={styles.input}
               value={address}
               onChangeText={handleAddressChange}
-              placeholder="Street address"
+              placeholder={t("editProperty.addressPlaceholder")}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="words"
               autoCorrect={false}
@@ -210,7 +212,7 @@ export default function EditPropertyScreen({
             {searching ? (
               <View style={styles.searchHint}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.searchHintText}>Looking up…</Text>
+                <Text style={styles.searchHintText}>{t("addProperty.lookingUp")}</Text>
               </View>
             ) : null}
             {!picked && suggestions.length > 0 ? (
@@ -237,40 +239,43 @@ export default function EditPropertyScreen({
             ) : null}
           </Field>
 
-          <Field label="Kind">
+          <Field label={t("addProperty.kindLabel")}>
             <View style={styles.segmented}>
               <SegmentButton
-                text="Rental"
+                text={t("kind.rental")}
                 active={kind === "rental"}
                 onPress={() => setKind("rental")}
               />
               <SegmentButton
-                text="For sale"
+                text={t("kind.for_sale")}
                 active={kind === "for_sale"}
                 onPress={() => setKind("for_sale")}
               />
             </View>
           </Field>
 
-          <Field label="Source URL">
+          <Field label={t("addProperty.sourceUrlLabel")}>
             <TextInput
               style={styles.input}
               value={sourceUrl}
               onChangeText={setSourceUrl}
-              placeholder="https://www.zillow.com/..."
+              placeholder={t("addProperty.sourceUrlPlaceholder")}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
             />
-            <Text style={styles.hint}>Leave empty to clear.</Text>
+            <Text style={styles.hint}>{t("editProperty.sourceUrlHint")}</Text>
           </Field>
 
           <Text style={styles.footHint}>
-            To change <Text style={styles.footHintEm}>status</Text>,{" "}
-            <Text style={styles.footHintEm}>units</Text>, or{" "}
-            <Text style={styles.footHintEm}>notes</Text>, use the buttons on the
-            detail page.
+            {t("editProperty.footHintPrefix")}
+            <Text style={styles.footHintEm}>{t("editProperty.footHintEmStatus")}</Text>
+            {t("editProperty.footHintMiddle")}
+            <Text style={styles.footHintEm}>{t("editProperty.footHintEmUnits")}</Text>
+            {t("editProperty.footHintOr")}
+            <Text style={styles.footHintEm}>{t("editProperty.footHintEmNotes")}</Text>
+            {t("editProperty.footHintSuffix")}
           </Text>
 
           {busy ? (

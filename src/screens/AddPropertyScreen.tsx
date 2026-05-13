@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { createNote, createProperty, createUnit } from "../api";
 import { geocode, type GeocodingResult } from "../geocoding";
+import { useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -27,6 +28,7 @@ const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
 } as const;
 
 export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
+  const { t } = useT();
   // Property fields
   const [address, setAddress] = useState("");
   const [kind, setKind] = useState<"rental" | "for_sale">("rental");
@@ -99,7 +101,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
 
   async function handleSave() {
     if (!address.trim()) {
-      Alert.alert("Missing address", "Address is required.");
+      Alert.alert(t("addProperty.missingAddressTitle"), t("addProperty.missingAddressBody"));
       return;
     }
     setBusy(true);
@@ -141,7 +143,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             baths: baths.trim() ? Number(baths) : undefined,
           });
         } catch (err: any) {
-          warnings.push(`Unit failed: ${err?.message ?? String(err)}`);
+          warnings.push(t("addProperty.unitFailed", err?.message ?? String(err)));
         }
       }
 
@@ -150,19 +152,19 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
         try {
           await createNote(property.id, noteText.trim());
         } catch (err: any) {
-          warnings.push(`Note failed: ${err?.message ?? String(err)}`);
+          warnings.push(t("addProperty.noteFailed", err?.message ?? String(err)));
         }
       }
 
       if (warnings.length > 0) {
-        Alert.alert("Property saved with warnings", warnings.join("\n\n"), [
-          { text: "OK", onPress: onCreated },
+        Alert.alert(t("addProperty.savedWithWarnings"), warnings.join("\n\n"), [
+          { text: t("common.ok"), onPress: onCreated },
         ]);
       } else {
         onCreated();
       }
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -182,9 +184,9 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillSecondaryText}>Cancel</Text>
+            <Text style={styles.navPillSecondaryText}>{t("common.cancel")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>New property</Text>
+          <Text style={styles.headerTitle}>{t("addProperty.headerTitle")}</Text>
           <Pressable
             onPress={handleSave}
             disabled={busy || !address.trim()}
@@ -195,7 +197,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillPrimaryText}>Save</Text>
+            <Text style={styles.navPillPrimaryText}>{t("common.save")}</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -211,12 +213,12 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           {/* === Property === */}
-          <Field label="Address *">
+          <Field label={t("addProperty.addressLabel")}>
             <TextInput
               style={styles.input}
               value={address}
               onChangeText={handleAddressChange}
-              placeholder="Type a street address..."
+              placeholder={t("addProperty.addressPlaceholder")}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="words"
               autoCorrect={false}
@@ -225,7 +227,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             {searching ? (
               <View style={styles.searchHint}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.searchHintText}>Looking up…</Text>
+                <Text style={styles.searchHintText}>{t("addProperty.lookingUp")}</Text>
               </View>
             ) : null}
             {!picked && suggestions.length > 0 ? (
@@ -253,37 +255,40 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             {hasCoords && picked ? (
               <View style={styles.autoFilledBanner}>
                 <Text style={styles.autoFilledText}>
-                  ✓ Auto-filled coordinates: {Number(latitude).toFixed(4)},{" "}
-                  {Number(longitude).toFixed(4)}
+                  {t(
+                    "addProperty.autoFilled",
+                    Number(latitude).toFixed(4),
+                    Number(longitude).toFixed(4),
+                  )}
                 </Text>
                 <Pressable onPress={handleClearCoords} hitSlop={6}>
-                  <Text style={styles.autoFilledClear}>Clear</Text>
+                  <Text style={styles.autoFilledClear}>{t("addProperty.clear")}</Text>
                 </Pressable>
               </View>
             ) : null}
           </Field>
 
-          <Field label="Kind">
+          <Field label={t("addProperty.kindLabel")}>
             <View style={styles.segmented}>
               <SegmentButton
-                text="Rental"
+                text={t("kind.rental")}
                 active={kind === "rental"}
                 onPress={() => setKind("rental")}
               />
               <SegmentButton
-                text="For sale"
+                text={t("kind.for_sale")}
                 active={kind === "for_sale"}
                 onPress={() => setKind("for_sale")}
               />
             </View>
           </Field>
 
-          <Field label="Source URL">
+          <Field label={t("addProperty.sourceUrlLabel")}>
             <TextInput
               style={styles.input}
               value={sourceUrl}
               onChangeText={setSourceUrl}
-              placeholder="https://www.zillow.com/..."
+              placeholder={t("addProperty.sourceUrlPlaceholder")}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
@@ -293,10 +298,10 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
 
           {/* === Optional Unit === */}
           <View style={styles.divider}>
-            <Text style={styles.dividerText}>Unit details (optional)</Text>
+            <Text style={styles.dividerText}>{t("addProperty.unitSectionTitle")}</Text>
           </View>
 
-          <Field label="Unit type">
+          <Field label={t("addProperty.unitTypeLabel")}>
             <View style={styles.chipRow}>
               {UNIT_TYPES[kind].map((t) => (
                 <Pressable
@@ -320,8 +325,8 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             </View>
             <Text style={styles.hint}>
               {unitType
-                ? "A unit will be created with the values below."
-                : "Tap a type if you want to create a unit. Skip to add later."}
+                ? t("addProperty.unitTypeHintPicked")
+                : t("addProperty.unitTypeHintEmpty")}
             </Text>
           </Field>
 
@@ -329,12 +334,12 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
             <>
               <View style={styles.row2}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Unit label">
+                  <Field label={t("addProperty.unitLabel")}>
                     <TextInput
                       style={styles.input}
                       value={unitLabel}
                       onChangeText={setUnitLabel}
-                      placeholder="Apt 12A"
+                      placeholder={t("addProperty.unitLabelPlaceholder")}
                       placeholderTextColor={colors.textMuted}
                     />
                   </Field>
@@ -343,14 +348,20 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
                 <View style={{ flex: 1 }}>
                   <Field
                     label={
-                      kind === "rental" ? "Price ($/mo)" : "Price ($)"
+                      kind === "rental"
+                        ? t("addProperty.pricePerMo")
+                        : t("addProperty.priceTotal")
                     }
                   >
                     <TextInput
                       style={styles.input}
                       value={priceDollars}
                       onChangeText={setPriceDollars}
-                      placeholder={kind === "rental" ? "1800" : "1750000"}
+                      placeholder={
+                        kind === "rental"
+                          ? t("addProperty.pricePlaceholderRental")
+                          : t("addProperty.pricePlaceholderForSale")
+                      }
                       placeholderTextColor={colors.textMuted}
                       keyboardType="decimal-pad"
                     />
@@ -359,7 +370,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
               </View>
               <View style={styles.row3}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Beds">
+                  <Field label={t("addProperty.bedsLabel")}>
                     <TextInput
                       style={styles.input}
                       value={beds}
@@ -372,7 +383,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
                 </View>
                 <View style={{ width: 10 }} />
                 <View style={{ flex: 1 }}>
-                  <Field label="Baths">
+                  <Field label={t("addProperty.bathsLabel")}>
                     <TextInput
                       style={styles.input}
                       value={baths}
@@ -385,7 +396,7 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
                 </View>
                 <View style={{ width: 10 }} />
                 <View style={{ flex: 1 }}>
-                  <Field label="Sqft">
+                  <Field label={t("addProperty.sqftLabel")}>
                     <TextInput
                       style={styles.input}
                       value={sqft}
@@ -402,23 +413,24 @@ export default function AddPropertyScreen({ onCancel, onCreated }: Props) {
 
           {/* === Optional first note === */}
           <View style={styles.divider}>
-            <Text style={styles.dividerText}>First note (optional)</Text>
+            <Text style={styles.dividerText}>{t("addProperty.noteSectionTitle")}</Text>
           </View>
 
-          <Field label="What did you think?">
+          <Field label={t("addProperty.noteFieldLabel")}>
             <TextInput
               style={[styles.input, styles.noteInput]}
               value={noteText}
               onChangeText={setNoteText}
-              placeholder="采光很好；HOA 偏高；地铁 5 分钟…"
+              placeholder={t("addProperty.notePlaceholder")}
               placeholderTextColor={colors.textMuted}
               multiline
             />
           </Field>
 
           <Text style={styles.footHint}>
-            Status defaults to <Text style={styles.footHintEm}>toured</Text>.
-            You can change it on the detail page after creating.
+            {t("addProperty.footHintPrefix")}
+            <Text style={styles.footHintEm}>{t("addProperty.footHintEm")}</Text>
+            {t("addProperty.footHintSuffix")}
           </Text>
 
           {busy ? (

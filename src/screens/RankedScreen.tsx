@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { computeRanking, type RankedUnit } from "../api";
+import { unitTypeLabel, useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -28,6 +29,7 @@ export default function RankedScreen({
   onOpenUnit,
   onOpenPreferences,
 }: Props) {
+  const { t } = useT();
   const [items, setItems] = useState<RankedUnit[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -36,10 +38,10 @@ export default function RankedScreen({
       const resp = await computeRanking();
       setItems(resp.items);
     } catch (err: any) {
-      Alert.alert("Couldn't compute ranking", err?.message ?? String(err));
+      Alert.alert(t("ranked.couldntCompute"), err?.message ?? String(err));
       setItems([]);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -68,7 +70,7 @@ export default function RankedScreen({
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillText}>‹ Home</Text>
+            <Text style={styles.navPillText}>{t("ranked.homeBtn")}</Text>
           </Pressable>
           <Pressable
             onPress={onOpenPreferences}
@@ -78,14 +80,12 @@ export default function RankedScreen({
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillPrimaryText}>⚙ Preferences</Text>
+            <Text style={styles.navPillPrimaryText}>{t("ranked.preferencesBtn")}</Text>
           </Pressable>
         </View>
-        <Text style={styles.eyebrow}>AI ranking</Text>
-        <Text style={styles.title}>Best picks</Text>
-        <Text style={styles.subtitle}>
-          Ranked across all properties, highest score first.
-        </Text>
+        <Text style={styles.eyebrow}>{t("ranked.eyebrow")}</Text>
+        <Text style={styles.title}>{t("ranked.title")}</Text>
+        <Text style={styles.subtitle}>{t("ranked.subtitle")}</Text>
       </LinearGradient>
 
       {items === null ? (
@@ -95,11 +95,8 @@ export default function RankedScreen({
       ) : items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>✨</Text>
-          <Text style={styles.emptyTitle}>Nothing to rank yet</Text>
-          <Text style={styles.emptyHint}>
-            Add some units (and optionally fill in Preferences) and we'll
-            rank them here.
-          </Text>
+          <Text style={styles.emptyTitle}>{t("ranked.emptyTitle")}</Text>
+          <Text style={styles.emptyHint}>{t("ranked.emptyHint")}</Text>
         </View>
       ) : (
         <FlatList
@@ -126,7 +123,7 @@ export default function RankedScreen({
                 <View style={{ flex: 1 }}>
                   <Text style={styles.medal}>{medalFor(index)}</Text>
                   <Text style={styles.unitTitle}>
-                    {item.unit_label?.trim() || prettyType(item.unit_type)}
+                    {item.unit_label?.trim() || unitTypeLabel(t, item.unit_type)}
                   </Text>
                   <Text style={styles.address} numberOfLines={1}>
                     {item.address}
@@ -170,22 +167,6 @@ function medalFor(index: number): string {
   if (index === 1) return "🥈";
   if (index === 2) return "🥉";
   return `#${index + 1}`;
-}
-
-function prettyType(t: string): string {
-  switch (t) {
-    case "Studio":
-    case "studio":
-      return "Studio";
-    case "1B":
-      return "1-bedroom";
-    case "2B":
-      return "2-bedroom";
-    case "3B":
-      return "3-bedroom";
-    default:
-      return t;
-  }
 }
 
 const styles = StyleSheet.create({

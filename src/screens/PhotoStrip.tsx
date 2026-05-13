@@ -22,6 +22,7 @@ import {
   updateMediaCaption,
   type MediaItem,
 } from "../api";
+import { useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export default function PhotoStrip({ unitId }: Props) {
+  const { t } = useT();
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -73,7 +75,7 @@ export default function PhotoStrip({ unitId }: Props) {
       setViewerKey({ ...viewerKey, caption: trimmed || undefined });
       setEditingCaption(false);
     } catch (err: any) {
-      Alert.alert("Couldn't save caption", err?.message ?? String(err));
+      Alert.alert(t("photo.captionSaveFailed"), err?.message ?? String(err));
     } finally {
       setSavingCaption(false);
     }
@@ -131,7 +133,7 @@ export default function PhotoStrip({ unitId }: Props) {
 
       await load();
     } catch (err: any) {
-      Alert.alert("Upload failed", err?.message ?? String(err));
+      Alert.alert(t("photo.uploadFailed"), err?.message ?? String(err));
     } finally {
       setUploading(false);
       setProgress(0);
@@ -142,10 +144,7 @@ export default function PhotoStrip({ unitId }: Props) {
     if (uploading) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (perm.status !== "granted") {
-      Alert.alert(
-        "Camera permission needed",
-        "Enable in Settings → Privacy → Camera.",
-      );
+      Alert.alert(t("photo.cameraPermNeeded"), t("photo.cameraPermBody"));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -161,10 +160,7 @@ export default function PhotoStrip({ unitId }: Props) {
     if (uploading) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== "granted") {
-      Alert.alert(
-        "Photo permission needed",
-        "Enable in Settings → Privacy → Photos.",
-      );
+      Alert.alert(t("photo.photoPermNeeded"), t("photo.photoPermBody"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -178,10 +174,10 @@ export default function PhotoStrip({ unitId }: Props) {
   }
 
   async function handleDelete(item: MediaItem) {
-    Alert.alert("Delete this photo?", "This is permanent.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("photo.deletePhotoTitle"), t("common.permanent"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           setDeletingId(item.id);
@@ -190,7 +186,7 @@ export default function PhotoStrip({ unitId }: Props) {
             setViewerKey(null);
             await load();
           } catch (err: any) {
-            Alert.alert("Delete failed", err?.message ?? String(err));
+            Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
           } finally {
             setDeletingId(null);
           }
@@ -241,10 +237,10 @@ export default function PhotoStrip({ unitId }: Props) {
                 styles.addBtn,
                 pressed && { opacity: 0.85 },
               ]}
-              accessibilityLabel="Take photo"
+              accessibilityLabel={t("photo.takePhotoA11y")}
             >
               <Text style={styles.addBtnIcon}>📷</Text>
-              <Text style={styles.addBtnText}>Camera</Text>
+              <Text style={styles.addBtnText}>{t("photo.camera")}</Text>
             </Pressable>
             <Pressable
               onPress={handlePickFromLibrary}
@@ -252,10 +248,10 @@ export default function PhotoStrip({ unitId }: Props) {
                 styles.addBtn,
                 pressed && { opacity: 0.85 },
               ]}
-              accessibilityLabel="Pick from library"
+              accessibilityLabel={t("photo.pickFromLibraryA11y")}
             >
               <Text style={styles.addBtnIcon}>🖼️</Text>
-              <Text style={styles.addBtnText}>Library</Text>
+              <Text style={styles.addBtnText}>{t("photo.library")}</Text>
             </Pressable>
           </>
         )}
@@ -287,7 +283,7 @@ export default function PhotoStrip({ unitId }: Props) {
                     <TextInput
                       value={captionDraft}
                       onChangeText={setCaptionDraft}
-                      placeholder="Add a caption…"
+                      placeholder={t("photo.captionAddPlaceholder")}
                       placeholderTextColor="#FFFFFF77"
                       style={styles.captionInput}
                       multiline
@@ -303,7 +299,7 @@ export default function PhotoStrip({ unitId }: Props) {
                         disabled={savingCaption}
                         style={styles.captionCancel}
                       >
-                        <Text style={styles.captionCancelText}>Cancel</Text>
+                        <Text style={styles.captionCancelText}>{t("common.cancel")}</Text>
                       </Pressable>
                       <Pressable
                         onPress={saveCaption}
@@ -316,7 +312,7 @@ export default function PhotoStrip({ unitId }: Props) {
                             size="small"
                           />
                         ) : (
-                          <Text style={styles.captionSaveText}>Save</Text>
+                          <Text style={styles.captionSaveText}>{t("common.save")}</Text>
                         )}
                       </Pressable>
                     </View>
@@ -336,16 +332,16 @@ export default function PhotoStrip({ unitId }: Props) {
                           : styles.captionPlaceholder
                       }
                     >
-                      {viewerKey.caption ?? "Tap to add a caption"}
+                      {viewerKey.caption ?? t("photo.captionTap")}
                     </Text>
-                    <Text style={styles.captionEditHint}>Edit</Text>
+                    <Text style={styles.captionEditHint}>{t("photo.captionEdit")}</Text>
                   </Pressable>
                 )}
               </View>
 
               <View style={styles.viewerActions}>
                 <Pressable onPress={closeViewer} style={styles.viewerClose}>
-                  <Text style={styles.viewerCloseText}>Close</Text>
+                  <Text style={styles.viewerCloseText}>{t("photo.close")}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => handleDelete(viewerKey)}
@@ -355,7 +351,7 @@ export default function PhotoStrip({ unitId }: Props) {
                   {deletingId === viewerKey.id ? (
                     <ActivityIndicator color={colors.pinkDeep} size="small" />
                   ) : (
-                    <Text style={styles.viewerDeleteText}>Delete</Text>
+                    <Text style={styles.viewerDeleteText}>{t("common.delete")}</Text>
                   )}
                 </Pressable>
               </View>

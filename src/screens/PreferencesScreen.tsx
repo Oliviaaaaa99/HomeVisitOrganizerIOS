@@ -20,6 +20,7 @@ import {
   savePreferences,
   type Preferences,
 } from "../api";
+import { useT, type Lang } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export default function PreferencesScreen({ onBack }: Props) {
+  const { t, lang, setLang } = useT();
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   // We keep all fields as strings during edit; convert only on save so the
@@ -51,7 +53,7 @@ export default function PreferencesScreen({ onBack }: Props) {
         if (p.min_baths != null) setMinBaths(String(p.min_baths));
         if (p.min_sqft != null) setMinSqft(String(p.min_sqft));
       } catch (err: any) {
-        Alert.alert("Couldn't load preferences", err?.message ?? String(err));
+        Alert.alert(t("preferences.couldntLoad"), err?.message ?? String(err));
       } finally {
         setLoaded(true);
       }
@@ -73,7 +75,7 @@ export default function PreferencesScreen({ onBack }: Props) {
       await savePreferences(payload);
       onBack();
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -107,7 +109,7 @@ export default function PreferencesScreen({ onBack }: Props) {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillText}>‹ Cancel</Text>
+            <Text style={styles.navPillText}>{t("preferences.cancel")}</Text>
           </Pressable>
           <Pressable
             onPress={save}
@@ -122,15 +124,12 @@ export default function PreferencesScreen({ onBack }: Props) {
             {busy ? (
               <ActivityIndicator color={colors.textInverse} size="small" />
             ) : (
-              <Text style={styles.navPillPrimaryText}>Save</Text>
+              <Text style={styles.navPillPrimaryText}>{t("preferences.save")}</Text>
             )}
           </Pressable>
         </View>
-        <Text style={styles.title}>Preferences</Text>
-        <Text style={styles.subtitle}>
-          Used by AI ranking. Leave any field blank if you don't have a
-          preference.
-        </Text>
+        <Text style={styles.title}>{t("preferences.title")}</Text>
+        <Text style={styles.subtitle}>{t("preferences.subtitle")}</Text>
       </LinearGradient>
 
       <ScrollView
@@ -138,25 +137,54 @@ export default function PreferencesScreen({ onBack }: Props) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>Where you work</Text>
-        <Text style={styles.fieldLabel}>Work address</Text>
+        <Text style={styles.sectionTitle}>{t("preferences.languageSection")}</Text>
+        <View style={styles.langSegmented}>
+          {(
+            [
+              { key: "en" as Lang, label: t("preferences.languageEn") },
+              { key: "zh" as Lang, label: t("preferences.languageZh") },
+            ]
+          ).map((opt) => {
+            const active = lang === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setLang(opt.key)}
+                style={[
+                  styles.langSegment,
+                  active && styles.langSegmentActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.langSegmentText,
+                    active && styles.langSegmentTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 22 }]}>{t("preferences.workSection")}</Text>
+        <Text style={styles.fieldLabel}>{t("preferences.workLabel")}</Text>
         <TextInput
           style={styles.input}
           value={workAddress}
           onChangeText={setWorkAddress}
-          placeholder="500 Howard St, San Francisco"
+          placeholder={t("preferences.workPlaceholder")}
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Text style={styles.helperText}>
-          Used to estimate commute time when ranking.
-        </Text>
+        <Text style={styles.helperText}>{t("preferences.workHelper")}</Text>
 
-        <Text style={[styles.sectionTitle, { marginTop: 22 }]}>Budget</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 22 }]}>{t("preferences.budgetSection")}</Text>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Min ($/mo or total)</Text>
+            <Text style={styles.fieldLabel}>{t("preferences.budgetMin")}</Text>
             <TextInput
               style={styles.input}
               value={budgetMin}
@@ -167,7 +195,7 @@ export default function PreferencesScreen({ onBack }: Props) {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Max</Text>
+            <Text style={styles.fieldLabel}>{t("preferences.budgetMax")}</Text>
             <TextInput
               style={styles.input}
               value={budgetMax}
@@ -179,10 +207,10 @@ export default function PreferencesScreen({ onBack }: Props) {
           </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 22 }]}>Minimums</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 22 }]}>{t("preferences.minimumsSection")}</Text>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Beds</Text>
+            <Text style={styles.fieldLabel}>{t("preferences.minBeds")}</Text>
             <TextInput
               style={styles.input}
               value={minBeds}
@@ -193,7 +221,7 @@ export default function PreferencesScreen({ onBack }: Props) {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Baths</Text>
+            <Text style={styles.fieldLabel}>{t("preferences.minBaths")}</Text>
             <TextInput
               style={styles.input}
               value={minBaths}
@@ -204,7 +232,7 @@ export default function PreferencesScreen({ onBack }: Props) {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Sqft</Text>
+            <Text style={styles.fieldLabel}>{t("preferences.minSqft")}</Text>
             <TextInput
               style={styles.input}
               value={minSqft}
@@ -305,4 +333,29 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   row: { flexDirection: "row", gap: 10 },
+  langSegmented: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radii.input,
+    padding: 4,
+    gap: 4,
+    ...shadow.card,
+  },
+  langSegment: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: radii.input - 4,
+  },
+  langSegmentActive: {
+    backgroundColor: colors.primary,
+  },
+  langSegmentText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textSecondary,
+  },
+  langSegmentTextActive: {
+    color: colors.textInverse,
+  },
 });
