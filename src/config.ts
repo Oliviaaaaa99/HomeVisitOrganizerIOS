@@ -1,16 +1,29 @@
 // Backend service URLs.
 //
-// Tier 1 dev: hard-coded to the Mac's LAN IP. The iPhone running the Expo Go
-// build hits these directly when on the same WiFi. When we move to a deployed
-// backend (M3+), swap to the real domain.
+// Default: production (Fly.io). Override for local development by setting
+// EXPO_PUBLIC_LAN_HOST to your Mac's LAN IP — every service URL will switch
+// to that host, with the matching docker-compose port.
 //
-// To change: update IP here, save the file. Expo's Fast Refresh picks it up
-// without restarting.
-const HOST = "http://10.0.0.105";
+//   # talk to local docker-compose backend
+//   EXPO_PUBLIC_LAN_HOST=http://10.0.0.105 npx expo start
+//
+//   # talk to the deployed backend (default — no env var needed)
+//   npx expo start
+//
+// Expo bundles EXPO_PUBLIC_* vars into the JS at start time, so the value
+// is read once on app boot. Changing it requires re-starting `expo start`.
+const LAN = process.env.EXPO_PUBLIC_LAN_HOST;
 
-export const API = {
-  USER: `${HOST}:8080`,
-  PROPERTY: `${HOST}:8082`,
-  MEDIA: `${HOST}:8083`,
-  RANKING: `${HOST}:8084`,
-};
+export const API = LAN
+  ? {
+      USER: `${LAN}:8080`,
+      PROPERTY: `${LAN}:8082`,
+      MEDIA: `${LAN}:8083`,
+      RANKING: `${LAN}:8084`,
+    }
+  : {
+      USER: "https://hvo-user-svc-olivia.fly.dev",
+      PROPERTY: "https://hvo-property-svc-olivia.fly.dev",
+      MEDIA: "https://hvo-media-svc-olivia.fly.dev",
+      RANKING: "https://hvo-ranking-svc-olivia.fly.dev",
+    };
