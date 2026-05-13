@@ -26,6 +26,7 @@ import {
   type Unit,
   type UnitStatus,
 } from "../api";
+import { kindLabel, unitTypeLabel, useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 import PhotoStrip from "./PhotoStrip";
 
@@ -41,6 +42,7 @@ const UNIT_TYPES: Record<"rental" | "for_sale", readonly string[]> = {
 } as const;
 
 export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Props) {
+  const { t } = useT();
   const [data, setData] = useState<PropertyDetail | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
@@ -56,21 +58,21 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         const detail = await getProperty(propertyId);
         if (!cancelled) setData(detail);
       } catch (err: any) {
-        Alert.alert("Load failed", err?.message ?? String(err));
+        Alert.alert(t("common.loadFailed"), err?.message ?? String(err));
         onBack();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [propertyId, onBack]);
+  }, [propertyId, onBack, t]);
 
   async function reload() {
     try {
       const detail = await getProperty(propertyId);
       setData(detail);
     } catch (err: any) {
-      Alert.alert("Reload failed", err?.message ?? String(err));
+      Alert.alert(t("propertyDetail.reloadFailed"), err?.message ?? String(err));
     }
   }
 
@@ -84,7 +86,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         units: data.units.map((u) => (u.id === unit.id ? { ...u, ...updated } : u)),
       });
     } catch (err: any) {
-      Alert.alert("Update failed", err?.message ?? String(err));
+      Alert.alert(t("common.updateFailed"), err?.message ?? String(err));
     } finally {
       setBusyAction(null);
     }
@@ -93,12 +95,12 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
   async function handleDelete() {
     if (!data || busyAction) return;
     Alert.alert(
-      "Delete this property?",
-      "This permanently removes the property, its units, notes, and photos. It cannot be undone.",
+      t("propertyDetail.deletePropertyTitle"),
+      t("propertyDetail.deletePropertyBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             setBusyAction("delete");
@@ -106,7 +108,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
               await deleteProperty(propertyId);
               onBack();
             } catch (err: any) {
-              Alert.alert("Delete failed", err?.message ?? String(err));
+              Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
             } finally {
               setBusyAction(null);
             }
@@ -119,7 +121,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
   function openSourceURL() {
     if (!data?.source_url) return;
     Linking.openURL(data.source_url).catch((err) => {
-      Alert.alert("Couldn't open", String(err));
+      Alert.alert(t("propertyDetail.cantOpen"), String(err));
     });
   }
 
@@ -147,7 +149,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillSecondaryText}>‹ Back</Text>
+            <Text style={styles.navPillSecondaryText}>‹ {t("common.back")}</Text>
           </Pressable>
           <Pressable
             onPress={onEdit}
@@ -157,12 +159,12 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillPrimaryText}>Edit</Text>
+            <Text style={styles.navPillPrimaryText}>{t("common.edit")}</Text>
           </Pressable>
         </View>
         <Text style={styles.address}>{data.address}</Text>
         <View style={styles.metaRow}>
-          <Pill text={data.kind} />
+          <Pill text={data.kind} label={kindLabel(t, data.kind)} />
           {data.latitude !== undefined && data.longitude !== undefined && (
             <Text style={styles.coords}>
               {data.latitude.toFixed(4)}, {data.longitude.toFixed(4)}
@@ -189,7 +191,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
             the Home swipe gesture. */}
         <View style={styles.actionRow}>
           <ActionButton
-            text="Delete property"
+            text={t("propertyDetail.deleteProperty")}
             variant="danger"
             loading={busyAction === "delete"}
             onPress={handleDelete}
@@ -200,7 +202,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Units · {data.units.length}
+              {t("propertyDetail.unitsTitle", data.units.length)}
             </Text>
             <Pressable
               onPress={() => {
@@ -210,7 +212,9 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
               hitSlop={6}
             >
               <Text style={styles.addLink}>
-                {unitMode === "new" ? "− Cancel" : "+ Add unit"}
+                {unitMode === "new"
+                  ? t("propertyDetail.cancelAdd")
+                  : t("propertyDetail.addUnit")}
               </Text>
             </Pressable>
           </View>
@@ -228,7 +232,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
           ) : null}
 
           {data.units.length === 0 && unitMode !== "new" ? (
-            <Text style={styles.empty}>No units</Text>
+            <Text style={styles.empty}>{t("propertyDetail.noUnits")}</Text>
           ) : (
             data.units.map((u) =>
               unitMode === u.id ? (
@@ -257,10 +261,10 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
                   >
                     <View style={styles.rowMain}>
                       <Text style={styles.rowTitle}>
-                        {u.unit_label ?? u.unit_type}
+                        {u.unit_label ?? unitTypeLabel(t, u.unit_type)}
                       </Text>
                       <Text style={styles.rowSubtitle}>
-                        {u.unit_type}
+                        {unitTypeLabel(t, u.unit_type)}
                         {u.beds != null && u.baths != null
                           ? ` · ${u.beds}BR/${u.baths}BA`
                           : ""}
@@ -293,7 +297,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              About this place · {propertyNotes.length}
+              {t("propertyDetail.aboutTitle", propertyNotes.length)}
             </Text>
             <Pressable
               onPress={() => {
@@ -303,7 +307,9 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
               hitSlop={6}
             >
               <Text style={styles.addLink}>
-                {noteMode === "new" ? "− Cancel" : "+ Add note"}
+                {noteMode === "new"
+                  ? t("propertyDetail.cancelAdd")
+                  : t("propertyDetail.addNote")}
               </Text>
             </Pressable>
           </View>
@@ -320,7 +326,7 @@ export default function PropertyDetailScreen({ propertyId, onBack, onEdit }: Pro
           ) : null}
 
           {propertyNotes.length === 0 && noteMode !== "new" ? (
-            <Text style={styles.empty}>No notes about the place yet.</Text>
+            <Text style={styles.empty}>{t("propertyDetail.noPlaceNotesYet")}</Text>
           ) : (
             propertyNotes.map((n) =>
               noteMode === n.id ? (
@@ -375,6 +381,7 @@ function UnitForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   const isEdit = !!initial;
   const [unitType, setUnitType] = useState<string>(initial?.unit_type ?? "");
   const [unitLabel, setUnitLabel] = useState(initial?.unit_label ?? "");
@@ -395,7 +402,7 @@ function UnitForm({
 
   async function save() {
     if (!unitType) {
-      Alert.alert("Pick a unit type");
+      Alert.alert(t("propertyDetail.pickUnitType"));
       return;
     }
     setSaving(true);
@@ -428,7 +435,7 @@ function UnitForm({
       }
       onSaved();
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setSaving(false);
     }
@@ -436,10 +443,10 @@ function UnitForm({
 
   function confirmDelete() {
     if (!isEdit || !initial) return;
-    Alert.alert("Delete this unit?", "This is permanent.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("propertyDetail.deleteUnitTitle"), t("common.permanent"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           setDeleting(true);
@@ -447,7 +454,7 @@ function UnitForm({
             await deleteUnit(initial.id);
             onSaved(); // close form + reload
           } catch (err: any) {
-            Alert.alert("Delete failed", err?.message ?? String(err));
+            Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
           } finally {
             setDeleting(false);
           }
@@ -459,9 +466,11 @@ function UnitForm({
   return (
     <View style={styles.inlineCard}>
       <View style={styles.formHeader}>
-        <Text style={styles.formTitle}>{isEdit ? "Edit unit" : "New unit"}</Text>
+        <Text style={styles.formTitle}>
+          {isEdit ? t("propertyDetail.editUnit") : t("propertyDetail.newUnit")}
+        </Text>
         <Pressable onPress={onCancel} hitSlop={6}>
-          <Text style={styles.formCancel}>Cancel</Text>
+          <Text style={styles.formCancel}>{t("common.cancel")}</Text>
         </Pressable>
       </View>
       <View style={styles.chipRow}>
@@ -487,14 +496,18 @@ function UnitForm({
           style={[styles.formInput, { flex: 1 }]}
           value={unitLabel}
           onChangeText={setUnitLabel}
-          placeholder="Unit label (Apt 12A)"
+          placeholder={t("propertyDetail.unitLabelPlaceholder")}
           placeholderTextColor={colors.textMuted}
         />
         <TextInput
           style={[styles.formInput, { flex: 1 }]}
           value={priceDollars}
           onChangeText={setPriceDollars}
-          placeholder={kind === "rental" ? "Price /mo" : "Price"}
+          placeholder={
+            kind === "rental"
+              ? t("propertyDetail.priceRentalPlaceholder")
+              : t("propertyDetail.priceForSalePlaceholder")
+          }
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
         />
@@ -504,7 +517,7 @@ function UnitForm({
           style={[styles.formInput, { flex: 1 }]}
           value={beds}
           onChangeText={setBeds}
-          placeholder="Beds"
+          placeholder={t("propertyDetail.bedsPlaceholder")}
           placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
         />
@@ -512,7 +525,7 @@ function UnitForm({
           style={[styles.formInput, { flex: 1 }]}
           value={baths}
           onChangeText={setBaths}
-          placeholder="Baths"
+          placeholder={t("propertyDetail.bathsPlaceholder")}
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
         />
@@ -520,7 +533,7 @@ function UnitForm({
           style={[styles.formInput, { flex: 1 }]}
           value={sqft}
           onChangeText={setSqft}
-          placeholder="Sqft"
+          placeholder={t("propertyDetail.sqftPlaceholder")}
           placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
         />
@@ -539,7 +552,7 @@ function UnitForm({
             {deleting ? (
               <ActivityIndicator color={colors.pinkDeep} size="small" />
             ) : (
-              <Text style={styles.deleteBtnText}>Delete</Text>
+              <Text style={styles.deleteBtnText}>{t("common.delete")}</Text>
             )}
           </Pressable>
         ) : null}
@@ -563,7 +576,7 @@ function UnitForm({
               <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text style={styles.saveBtnText}>
-                {isEdit ? "Save changes" : "Save unit"}
+                {isEdit ? t("common.saveChanges") : t("propertyDetail.saveUnit")}
               </Text>
             )}
           </LinearGradient>
@@ -584,6 +597,7 @@ function NoteForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   const isEdit = !!initial;
   const [body, setBody] = useState(initial?.body ?? "");
   const [saving, setSaving] = useState(false);
@@ -591,7 +605,7 @@ function NoteForm({
 
   async function save() {
     if (!body.trim()) {
-      Alert.alert("Note can't be empty");
+      Alert.alert(t("propertyDetail.noteEmpty"));
       return;
     }
     setSaving(true);
@@ -603,7 +617,7 @@ function NoteForm({
       }
       onSaved();
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setSaving(false);
     }
@@ -611,10 +625,10 @@ function NoteForm({
 
   function confirmDelete() {
     if (!isEdit || !initial) return;
-    Alert.alert("Delete this note?", "This is permanent.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("propertyDetail.deleteNoteTitle"), t("common.permanent"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           setDeleting(true);
@@ -622,7 +636,7 @@ function NoteForm({
             await deleteNote(initial.id);
             onSaved();
           } catch (err: any) {
-            Alert.alert("Delete failed", err?.message ?? String(err));
+            Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
           } finally {
             setDeleting(false);
           }
@@ -634,16 +648,18 @@ function NoteForm({
   return (
     <View style={styles.inlineCard}>
       <View style={styles.formHeader}>
-        <Text style={styles.formTitle}>{isEdit ? "Edit note" : "New note"}</Text>
+        <Text style={styles.formTitle}>
+          {isEdit ? t("propertyDetail.editNote") : t("propertyDetail.newNote")}
+        </Text>
         <Pressable onPress={onCancel} hitSlop={6}>
-          <Text style={styles.formCancel}>Cancel</Text>
+          <Text style={styles.formCancel}>{t("common.cancel")}</Text>
         </Pressable>
       </View>
       <TextInput
         style={[styles.formInput, styles.noteFormInput]}
         value={body}
         onChangeText={setBody}
-        placeholder="What did you think? 采光、噪音、HOA、通勤…"
+        placeholder={t("propertyDetail.notePlaceholder")}
         placeholderTextColor={colors.textMuted}
         multiline
         autoFocus={!isEdit}
@@ -662,7 +678,7 @@ function NoteForm({
             {deleting ? (
               <ActivityIndicator color={colors.pinkDeep} size="small" />
             ) : (
-              <Text style={styles.deleteBtnText}>Delete</Text>
+              <Text style={styles.deleteBtnText}>{t("common.delete")}</Text>
             )}
           </Pressable>
         ) : null}
@@ -686,7 +702,7 @@ function NoteForm({
               <ActivityIndicator color={colors.textInverse} />
             ) : (
               <Text style={styles.saveBtnText}>
-                {isEdit ? "Save changes" : "Save note"}
+                {isEdit ? t("common.saveChanges") : t("propertyDetail.saveNote")}
               </Text>
             )}
           </LinearGradient>
@@ -707,11 +723,12 @@ function UnitStatusBar({
   busy: string | null;
   onChange: (next: UnitStatus) => void;
 }) {
+  const { t } = useT();
   const options: { key: UnitStatus; label: string }[] = [
-    { key: "toured", label: "✓ Toured" },
-    { key: "shortlisted", label: "★ Shortlist" },
-    { key: "rejected", label: "✕ Reject" },
-    { key: "archived", label: "📦 Archive" },
+    { key: "toured", label: t("status.touredAction") },
+    { key: "shortlisted", label: t("status.shortlistAction") },
+    { key: "rejected", label: t("status.rejectAction") },
+    { key: "archived", label: t("status.archiveAction") },
   ];
   return (
     <View style={styles.unitStatusBar}>
@@ -791,12 +808,12 @@ function ActionButton({
   );
 }
 
-function Pill({ text }: { text: string }) {
+function Pill({ text, label }: { text: string; label?: string }) {
   const c = colors.pill[text] ?? { bg: "#FFFFFFAA", fg: colors.primaryDeep };
   return (
     <View style={[styles.pill, { backgroundColor: c.bg }]}>
       <Text style={[styles.pillText, { color: c.fg }]}>
-        {text.replace("_", " ")}
+        {label ?? text.replace("_", " ")}
       </Text>
     </View>
   );

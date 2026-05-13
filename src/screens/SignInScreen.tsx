@@ -12,12 +12,14 @@ import {
   View,
 } from "react-native";
 import { devSignIn } from "../api";
+import { useT } from "../i18n";
 import { saveTokens, saveUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
 type Props = { onSignedIn: () => void };
 
 export default function SignInScreen({ onSignedIn }: Props) {
+  const { t } = useT();
   const [idToken, setIdToken] = useState("olivia-trying-it:olivia@example.com");
   const [busy, setBusy] = useState(false);
 
@@ -35,7 +37,7 @@ export default function SignInScreen({ onSignedIn }: Props) {
       if (email) await saveUserEmail(email);
       onSignedIn();
     } catch (err: any) {
-      Alert.alert("Sign in failed", err?.message ?? String(err));
+      Alert.alert(t("signIn.signInFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -55,24 +57,21 @@ export default function SignInScreen({ onSignedIn }: Props) {
             <Text style={styles.heroEmoji}>🏡</Text>
           </View>
 
-          <Text style={styles.title}>Apartment Tour Tracker</Text>
-          <Text style={styles.subtitle}>Tier 1 · dev sign-in</Text>
+          <Text style={styles.title}>{t("signIn.title")}</Text>
+          <Text style={styles.subtitle}>{t("signIn.subtitle")}</Text>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Identity (dev)</Text>
+            <Text style={styles.label}>{t("signIn.identityLabel")}</Text>
             <TextInput
               style={styles.input}
               autoCapitalize="none"
               autoCorrect={false}
               value={idToken}
               onChangeText={setIdToken}
-              placeholder="external_id:email@example.com"
+              placeholder={t("signIn.placeholder")}
               placeholderTextColor={colors.textMuted}
             />
-            <Text style={styles.hint}>
-              Format: anything-as-id:your@email — backend treats this as a fake
-              Apple id_token. Different ids create different users.
-            </Text>
+            <Text style={styles.hint}>{t("signIn.hint")}</Text>
           </View>
 
           <Pressable
@@ -93,7 +92,7 @@ export default function SignInScreen({ onSignedIn }: Props) {
               {busy ? (
                 <ActivityIndicator color={colors.textInverse} />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>{t("signIn.signInBtn")}</Text>
               )}
             </LinearGradient>
           </Pressable>

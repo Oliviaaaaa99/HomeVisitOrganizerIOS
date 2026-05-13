@@ -32,6 +32,7 @@ import {
   type Unit,
   type UnitStatus,
 } from "../api";
+import { kindLabel, statusLabel, unitTypeLabel, useT } from "../i18n";
 import { clearTokens, loadUserEmail } from "../storage";
 import { colors, radii, shadow } from "../theme";
 
@@ -63,6 +64,7 @@ export default function HomeScreen({
   onSignedOut,
   reloadKey,
 }: Props) {
+  const { t } = useT();
   const [items, setItems] = useState<PropertyDetail[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kindFilter, setKindFilter] = useState<KindFilter>("any");
@@ -103,7 +105,7 @@ export default function HomeScreen({
       const me = await updateDisplayName(next);
       setDisplayName(me.display_name ?? null);
     } catch (err: any) {
-      Alert.alert("Couldn't save name", err?.message ?? String(err));
+      Alert.alert(t("home.nameSaveFailed"), err?.message ?? String(err));
     } finally {
       setNameBusy(false);
     }
@@ -113,10 +115,7 @@ export default function HomeScreen({
     if (avatarBusy) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== "granted") {
-      Alert.alert(
-        "Photo permission needed",
-        "Enable in Settings → Privacy → Photos.",
-      );
+      Alert.alert(t("home.photoPermNeeded"), t("home.photoPermBody"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -139,7 +138,7 @@ export default function HomeScreen({
       // avatar at the same URL was already fetched.
       setAvatarUrl(`${committed.avatar_url}?v=${Date.now()}`);
     } catch (err: any) {
-      Alert.alert("Avatar upload failed", err?.message ?? String(err));
+      Alert.alert(t("home.avatarUploadFailed"), err?.message ?? String(err));
     } finally {
       setAvatarBusy(false);
     }
@@ -152,7 +151,7 @@ export default function HomeScreen({
       await deleteAvatar();
       setAvatarUrl(null);
     } catch (err: any) {
-      Alert.alert("Couldn't remove avatar", err?.message ?? String(err));
+      Alert.alert(t("home.avatarRemoveFailed"), err?.message ?? String(err));
     } finally {
       setAvatarBusy(false);
     }
@@ -197,7 +196,7 @@ export default function HomeScreen({
             )
           : prev,
       );
-      Alert.alert("Couldn't update", err?.message ?? String(err));
+      Alert.alert(t("home.couldntUpdate"), err?.message ?? String(err));
     } finally {
       setTogglingId(null);
     }
@@ -205,16 +204,16 @@ export default function HomeScreen({
 
   function confirmDelete(p: Property) {
     Alert.alert(
-      "Delete this property?",
-      `${p.address}\n\nThis permanently removes the property, its units, notes, and photos.`,
+      t("home.deletePropertyTitle"),
+      t("home.deletePropertyBody", p.address),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
           onPress: () => swipeRefs.current.get(p.id)?.close(),
         },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             setDeletingId(p.id);
@@ -223,7 +222,7 @@ export default function HomeScreen({
               setItems((prev) => (prev ? prev.filter((x) => x.id !== p.id) : prev));
               swipeRefs.current.delete(p.id);
             } catch (err: any) {
-              Alert.alert("Delete failed", err?.message ?? String(err));
+              Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
               swipeRefs.current.get(p.id)?.close();
             } finally {
               setDeletingId(null);
@@ -237,16 +236,16 @@ export default function HomeScreen({
 
   function confirmDeleteUnit(u: Unit) {
     Alert.alert(
-      "Delete this unit?",
-      `${unitTitle(u)}\n\nThis permanently removes the unit and its photos. The property and its other units stay.`,
+      t("home.deleteUnitTitle"),
+      t("home.deleteUnitBody", unitTitle(u, t)),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
           onPress: () => swipeRefs.current.get(u.id)?.close(),
         },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             setDeletingUnitId(u.id);
@@ -263,7 +262,7 @@ export default function HomeScreen({
               );
               swipeRefs.current.delete(u.id);
             } catch (err: any) {
-              Alert.alert("Delete failed", err?.message ?? String(err));
+              Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
               swipeRefs.current.get(u.id)?.close();
             } finally {
               setDeletingUnitId(null);
@@ -292,10 +291,10 @@ export default function HomeScreen({
       const ok = details.filter((d): d is PropertyDetail => d !== null);
       setItems(ok);
     } catch (err: any) {
-      Alert.alert("Load failed", err?.message ?? String(err));
+      Alert.alert(t("home.loadFailed"), err?.message ?? String(err));
       setItems([]);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -382,14 +381,16 @@ export default function HomeScreen({
         <View style={styles.headerInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.eyebrow}>
-              {displayName ? `${displayName}'s collection` : "My collection"}
+              {displayName
+                ? t("home.eyebrowNamed", displayName)
+                : t("home.eyebrowMine")}
             </Text>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>Properties</Text>
+              <Text style={styles.title}>{t("home.title")}</Text>
               <Text style={styles.titleEmoji}>🏠</Text>
             </View>
             {items.length > 0 ? (
-              <Text style={styles.subtitle}>{summarize(items)}</Text>
+              <Text style={styles.subtitle}>{summarize(items, t)}</Text>
             ) : null}
           </View>
           <Pressable
@@ -398,7 +399,7 @@ export default function HomeScreen({
               styles.avatar,
               pressed && { opacity: 0.85 },
             ]}
-            accessibilityLabel="Account"
+            accessibilityLabel={t("home.accountA11y")}
           >
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
@@ -441,7 +442,7 @@ export default function HomeScreen({
                 ]}
               >
                 <Text style={styles.sheetAvatarBtnText}>
-                  {avatarUrl ? "Change avatar" : "Add avatar"}
+                  {avatarUrl ? t("home.avatarChange") : t("home.avatarAdd")}
                 </Text>
               </Pressable>
               {avatarUrl ? (
@@ -453,18 +454,18 @@ export default function HomeScreen({
                     pressed && { opacity: 0.85 },
                   ]}
                 >
-                  <Text style={styles.sheetAvatarRemoveText}>Remove</Text>
+                  <Text style={styles.sheetAvatarRemoveText}>{t("home.avatarRemove")}</Text>
                 </Pressable>
               ) : null}
             </View>
 
-            <Text style={styles.sheetEyebrow}>Display name</Text>
+            <Text style={styles.sheetEyebrow}>{t("home.displayNameLabel")}</Text>
             <View style={styles.nameRow}>
               <TextInput
                 style={styles.nameInput}
                 value={nameDraft}
                 onChangeText={setNameDraft}
-                placeholder="Your name"
+                placeholder={t("home.displayNamePlaceholder")}
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="words"
                 returnKeyType="done"
@@ -486,14 +487,14 @@ export default function HomeScreen({
                 {nameBusy ? (
                   <ActivityIndicator color={colors.textInverse} size="small" />
                 ) : (
-                  <Text style={styles.nameSaveText}>Save</Text>
+                  <Text style={styles.nameSaveText}>{t("common.save")}</Text>
                 )}
               </Pressable>
             </View>
 
-            <Text style={styles.sheetEyebrow}>Signed in as</Text>
+            <Text style={styles.sheetEyebrow}>{t("home.signedInAs")}</Text>
             <Text style={styles.sheetEmail} numberOfLines={1}>
-              {userEmail ?? "(sign out and back in to refresh)"}
+              {userEmail ?? t("home.refreshHint")}
             </Text>
             <Pressable
               onPress={() => {
@@ -505,7 +506,7 @@ export default function HomeScreen({
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Text style={styles.sheetPrefsText}>⚙ Preferences</Text>
+              <Text style={styles.sheetPrefsText}>{t("home.preferences")}</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -517,7 +518,7 @@ export default function HomeScreen({
                 pressed && { opacity: 0.85 },
               ]}
             >
-              <Text style={styles.sheetSignOutText}>Sign out</Text>
+              <Text style={styles.sheetSignOutText}>{t("home.signOut")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -533,19 +534,19 @@ export default function HomeScreen({
             contentContainerStyle={styles.filterRow}
           >
             <FilterChip
-              label="Any kind"
+              label={t("home.anyKind")}
               active={kindFilter === "any"}
               onPress={() => setKindFilter("any")}
               count={kindCount("any")}
             />
             <FilterChip
-              label="🛋️ Rentals"
+              label={t("kind.rentalChip")}
               active={kindFilter === "rental"}
               onPress={() => setKindFilter("rental")}
               count={kindCount("rental")}
             />
             <FilterChip
-              label="🔑 For sale"
+              label={t("kind.forSaleChip")}
               active={kindFilter === "for_sale"}
               onPress={() => setKindFilter("for_sale")}
               count={kindCount("for_sale")}
@@ -557,25 +558,25 @@ export default function HomeScreen({
             contentContainerStyle={styles.filterRow}
           >
             <FilterChip
-              label="Any status"
+              label={t("home.anyStatus")}
               active={statusFilter === "any"}
               onPress={() => setStatusFilter("any")}
               count={statusCount("any")}
             />
             <FilterChip
-              label="★ Shortlisted"
+              label={t("home.shortlistedChip")}
               active={statusFilter === "shortlisted"}
               onPress={() => setStatusFilter("shortlisted")}
               count={statusCount("shortlisted")}
             />
             <FilterChip
-              label="✓ Toured"
+              label={t("home.touredChip")}
               active={statusFilter === "toured"}
               onPress={() => setStatusFilter("toured")}
               count={statusCount("toured")}
             />
             <FilterChip
-              label="✕ Rejected"
+              label={t("home.rejectedChip")}
               active={statusFilter === "rejected"}
               onPress={() => setStatusFilter("rejected")}
               count={statusCount("rejected")}
@@ -587,21 +588,21 @@ export default function HomeScreen({
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🌸</Text>
-          <Text style={styles.emptyTitle}>No properties yet</Text>
+          <Text style={styles.emptyTitle}>{t("home.emptyTitle")}</Text>
           <Text style={styles.emptyHint}>
-            Tap{" "}
-            <Text style={styles.emptyHintEm}>+ Add property</Text>{" "}
-            to track your first place. Capture flow (camera, photos) ships in Tier
-            2.
+            {t("home.emptyHintPrefix")}
+            <Text style={styles.emptyHintEm}>{t("home.emptyHintEm")}</Text>
+            {t("home.emptyHintSuffix")}
           </Text>
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔎</Text>
-          <Text style={styles.emptyTitle}>Nothing matches</Text>
+          <Text style={styles.emptyTitle}>{t("home.emptyMatchTitle")}</Text>
           <Text style={styles.emptyHint}>
-            Loosen the filters above or add one with{" "}
-            <Text style={styles.emptyHintEm}>+ Add property</Text>.
+            {t("home.emptyMatchHintPrefix")}
+            <Text style={styles.emptyHintEm}>{t("home.emptyMatchHintEm")}</Text>
+            {t("home.emptyMatchHintSuffix")}
           </Text>
         </View>
       ) : (
@@ -641,7 +642,7 @@ export default function HomeScreen({
                         {deletingId === property.id ? (
                           <ActivityIndicator color="#FFFFFF" />
                         ) : (
-                          <Text style={styles.swipeDeleteText}>Delete</Text>
+                          <Text style={styles.swipeDeleteText}>{t("common.delete")}</Text>
                         )}
                       </Pressable>
                     </View>
@@ -667,12 +668,14 @@ export default function HomeScreen({
                       </Text>
                       <Text style={styles.sectionUnitCount}>
                         {property.units.length === 0
-                          ? "No units"
-                          : `${property.units.length} ${property.units.length === 1 ? "unit" : "units"}`}
+                          ? t("home.sectionNoUnits")
+                          : property.units.length === 1
+                            ? t("home.sectionUnitOne", property.units.length)
+                            : t("home.sectionUnitMany", property.units.length)}
                       </Text>
                     </View>
                     <View style={styles.sectionHeaderMetaRow}>
-                      <Pill text={property.kind} />
+                      <Pill text={property.kind} label={kindLabel(t, property.kind)} />
                     </View>
                   </Pressable>
                 </Swipeable>
@@ -696,7 +699,7 @@ export default function HomeScreen({
                       pressed && { opacity: 0.85 },
                     ]}
                   >
-                    <Text style={styles.unitRowEmptyText}>+ Add a unit</Text>
+                    <Text style={styles.unitRowEmptyText}>{t("home.addUnitRow")}</Text>
                   </Pressable>
                 </View>
               );
@@ -736,7 +739,9 @@ export default function HomeScreen({
                             isShortlisted && styles.swipeShortlistTextActive,
                           ]}
                         >
-                          {isShortlisted ? "Unshortlist" : "★ Shortlist"}
+                          {isShortlisted
+                            ? t("home.unshortlistAction")
+                            : t("home.shortlistAction")}
                         </Text>
                       )}
                     </Pressable>
@@ -754,7 +759,7 @@ export default function HomeScreen({
                       {deletingUnitId === item.id ? (
                         <ActivityIndicator color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.swipeDeleteText}>Delete</Text>
+                        <Text style={styles.swipeDeleteText}>{t("common.delete")}</Text>
                       )}
                     </Pressable>
                   </View>
@@ -779,12 +784,12 @@ export default function HomeScreen({
                     {section.property.kind === "for_sale" ? "🔑" : "🛋"}
                   </Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.unitTitle}>{unitTitle(item)}</Text>
+                    <Text style={styles.unitTitle}>{unitTitle(item, t)}</Text>
                     <Text style={styles.unitSubtitle}>
-                      {unitSubtitle(item)}
+                      {unitSubtitle(item, t)}
                     </Text>
                   </View>
-                  <Pill text={item.status} />
+                  <Pill text={item.status} label={statusLabel(t, item.status)} />
                   <Text style={styles.unitChevron}>›</Text>
                 </Pressable>
               </Swipeable>
@@ -802,9 +807,9 @@ export default function HomeScreen({
             styles.rankFab,
             pressed && { opacity: 0.85 },
           ]}
-          accessibilityLabel="AI ranking"
+          accessibilityLabel={t("home.rankFabA11y")}
         >
-          <Text style={styles.rankFabText}>✨ Rank</Text>
+          <Text style={styles.rankFabText}>{t("home.rankFab")}</Text>
         </Pressable>
         <Pressable
           onPress={onAddProperty}
@@ -816,7 +821,7 @@ export default function HomeScreen({
             end={{ x: 1, y: 1 }}
             style={styles.fabInner}
           >
-            <Text style={styles.fabText}>+ Add property</Text>
+            <Text style={styles.fabText}>{t("home.addProperty")}</Text>
           </LinearGradient>
         </Pressable>
       </View>
@@ -864,12 +869,12 @@ function FilterChip({
   );
 }
 
-function Pill({ text }: { text: string }) {
+function Pill({ text, label }: { text: string; label?: string }) {
   const c = colors.pill[text] ?? { bg: colors.borderSoft, fg: colors.textSecondary };
   return (
     <View style={[styles.pill, { backgroundColor: c.bg }]}>
       <Text style={[styles.pillText, { color: c.fg }]}>
-        {text.replace("_", " ")}
+        {label ?? text.replace("_", " ")}
       </Text>
     </View>
   );
@@ -878,7 +883,10 @@ function Pill({ text }: { text: string }) {
 // Header subtitle line summarizing the user's collection. Counts unit-level
 // status now since that's where state lives. Statuses with zero count are
 // skipped; "toured" is implicit (the default) and would clutter the line.
-function summarize(items: PropertyDetail[]): string {
+function summarize(
+  items: PropertyDetail[],
+  t: (key: string, ...args: Array<string | number>) => string,
+): string {
   let units = 0;
   let shortlisted = 0;
   let rejected = 0;
@@ -890,18 +898,18 @@ function summarize(items: PropertyDetail[]): string {
     }
   }
   const parts: string[] = [
-    `${items.length} ${items.length === 1 ? "property" : "properties"}`,
+    items.length === 1
+      ? t("home.summaryProperty", items.length)
+      : t("home.summaryProperties", items.length),
   ];
-  if (units > 0) parts.push(`${units} ${units === 1 ? "unit" : "units"}`);
-  if (shortlisted) parts.push(`${shortlisted} shortlisted`);
-  if (rejected) parts.push(`${rejected} rejected`);
+  if (units > 0)
+    parts.push(
+      units === 1 ? t("home.summaryUnit", units) : t("home.summaryUnits", units),
+    );
+  if (shortlisted) parts.push(t("home.summaryShortlisted", shortlisted));
+  if (rejected) parts.push(t("home.summaryRejected", rejected));
   return parts.join(" · ");
 }
-
-const KIND_EMOJI: Record<string, string> = {
-  rental: "🛋️",
-  for_sale: "🔑",
-};
 
 function initialFor(email: string | null): string {
   if (!email) return "·";
@@ -909,13 +917,19 @@ function initialFor(email: string | null): string {
   return (trimmed[0] ?? "·").toUpperCase();
 }
 
-function unitTitle(u: Unit): string {
+function unitTitle(
+  u: Unit,
+  t: (key: string, ...args: Array<string | number>) => string,
+): string {
   // Lead with the user's label if they bothered to set one (e.g. "Apt 4B"),
   // otherwise the type — "Studio", "1-bedroom", "townhouse", etc.
-  return u.unit_label?.trim() || prettyUnitType(u.unit_type);
+  return u.unit_label?.trim() || unitTypeLabel(t, u.unit_type);
 }
 
-function unitSubtitle(u: Unit): string {
+function unitSubtitle(
+  u: Unit,
+  t: (key: string, ...args: Array<string | number>) => string,
+): string {
   const parts: string[] = [];
   if (u.price_cents != null) {
     parts.push(`$${(u.price_cents / 100).toLocaleString()}`);
@@ -923,23 +937,7 @@ function unitSubtitle(u: Unit): string {
   if (u.sqft != null) parts.push(`${u.sqft} sqft`);
   if (u.beds != null) parts.push(`${u.beds}bd`);
   if (u.baths != null) parts.push(`${u.baths}ba`);
-  return parts.length === 0 ? "No details yet" : parts.join(" · ");
-}
-
-function prettyUnitType(t: string): string {
-  switch (t) {
-    case "Studio":
-    case "studio":
-      return "Studio";
-    case "1B":
-      return "1-bedroom";
-    case "2B":
-      return "2-bedroom";
-    case "3B":
-      return "3-bedroom";
-    default:
-      return t;
-  }
+  return parts.length === 0 ? t("home.noDetailsYet") : parts.join(" · ");
 }
 
 const styles = StyleSheet.create({

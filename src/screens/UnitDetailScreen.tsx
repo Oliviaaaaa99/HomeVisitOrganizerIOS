@@ -30,6 +30,7 @@ import {
   type Unit,
   type UnitStatus,
 } from "../api";
+import { unitTypeLabel, useT } from "../i18n";
 import { colors, radii, shadow } from "../theme";
 import PhotoStrip from "./PhotoStrip";
 
@@ -46,6 +47,7 @@ export default function UnitDetailScreen({
   onBack,
   onViewProperty,
 }: Props) {
+  const { t } = useT();
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -58,9 +60,9 @@ export default function UnitDetailScreen({
       setProperty(detail);
       setUnit(u);
     } catch (err: any) {
-      Alert.alert("Load failed", err?.message ?? String(err));
+      Alert.alert(t("common.loadFailed"), err?.message ?? String(err));
     }
-  }, [propertyId, unitId]);
+  }, [propertyId, unitId, t]);
 
   useEffect(() => {
     reload();
@@ -73,7 +75,7 @@ export default function UnitDetailScreen({
       const updated = await updateUnitStatus(unit.id, next);
       setUnit({ ...unit, ...updated });
     } catch (err: any) {
-      Alert.alert("Update failed", err?.message ?? String(err));
+      Alert.alert(t("common.updateFailed"), err?.message ?? String(err));
     } finally {
       setBusy(null);
     }
@@ -81,28 +83,24 @@ export default function UnitDetailScreen({
 
   function handleDelete() {
     if (!unit || busy) return;
-    Alert.alert(
-      "Delete this unit?",
-      "This is permanent. Photos and unit-level notes go with it.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setBusy("delete");
-            try {
-              await deleteUnit(unit.id);
-              onBack();
-            } catch (err: any) {
-              Alert.alert("Delete failed", err?.message ?? String(err));
-            } finally {
-              setBusy(null);
-            }
-          },
+    Alert.alert(t("unitDetail.deleteUnitTitle"), t("unitDetail.deleteUnitBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: async () => {
+          setBusy("delete");
+          try {
+            await deleteUnit(unit.id);
+            onBack();
+          } catch (err: any) {
+            Alert.alert(t("common.deleteFailed"), err?.message ?? String(err));
+          } finally {
+            setBusy(null);
+          }
         },
-      ],
-    );
+      },
+    ]);
   }
 
   if (!property || !unit) {
@@ -130,7 +128,7 @@ export default function UnitDetailScreen({
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.navPillText}>‹ Back</Text>
+            <Text style={styles.navPillText}>‹ {t("common.back")}</Text>
           </Pressable>
           <Pressable
             onPress={() => setEditing((e) => !e)}
@@ -141,14 +139,16 @@ export default function UnitDetailScreen({
             ]}
           >
             <Text style={styles.navPillPrimaryText}>
-              {editing ? "Done" : "Edit"}
+              {editing ? t("common.done") : t("common.edit")}
             </Text>
           </Pressable>
         </View>
         <Text style={styles.eyebrow}>
-          {property.kind === "rental" ? "🛋️ Rental" : "🔑 For sale"}
+          {property.kind === "rental"
+            ? t("kind.rentalEmoji")
+            : t("kind.forSaleEmoji")}
         </Text>
-        <Text style={styles.unitTitle}>{unitTitle(unit)}</Text>
+        <Text style={styles.unitTitle}>{unitTitle(unit, t)}</Text>
         <Pressable onPress={onViewProperty} hitSlop={6}>
           <Text style={styles.propertyAddress} numberOfLines={2}>
             {property.address}
@@ -182,24 +182,24 @@ export default function UnitDetailScreen({
                 ) : null}
               </Text>
             ) : null}
-            <Text style={styles.specsLine}>{unitDetailSubtitle(unit)}</Text>
+            <Text style={styles.specsLine}>{unitDetailSubtitle(unit, t)}</Text>
             {unit.available_from ? (
               <Text style={styles.availableFrom}>
-                Available from {unit.available_from}
+                {t("unitDetail.availableFrom", unit.available_from)}
               </Text>
             ) : null}
           </View>
         )}
 
         <View style={styles.statusSection}>
-          <Text style={styles.statusLabel}>Status</Text>
+          <Text style={styles.statusLabel}>{t("unitDetail.statusLabel")}</Text>
           <View style={styles.statusBar}>
             {(
               [
-                { key: "toured", label: "✓ Toured" },
-                { key: "shortlisted", label: "★ Shortlist" },
-                { key: "rejected", label: "✕ Reject" },
-                { key: "archived", label: "📦 Archive" },
+                { key: "toured", label: t("status.touredAction") },
+                { key: "shortlisted", label: t("status.shortlistAction") },
+                { key: "rejected", label: t("status.rejectAction") },
+                { key: "archived", label: t("status.archiveAction") },
               ] as { key: UnitStatus; label: string }[]
             ).map((o) => {
               const active = unit.status === o.key;
@@ -237,7 +237,7 @@ export default function UnitDetailScreen({
         </View>
 
         <View style={styles.photoSection}>
-          <Text style={styles.sectionTitle}>Photos</Text>
+          <Text style={styles.sectionTitle}>{t("unitDetail.photos")}</Text>
           <PhotoStrip unitId={unit.id} />
         </View>
 
@@ -258,7 +258,7 @@ export default function UnitDetailScreen({
           {busy === "delete" ? (
             <ActivityIndicator color={colors.pinkDeep} />
           ) : (
-            <Text style={styles.deleteBtnText}>Delete this unit</Text>
+            <Text style={styles.deleteBtnText}>{t("unitDetail.deleteUnit")}</Text>
           )}
         </Pressable>
 
@@ -270,7 +270,9 @@ export default function UnitDetailScreen({
           ]}
         >
           <Text style={styles.viewPropertyBtnText}>
-            View property ({property.units.length} units total) →
+            {property.units.length === 1
+              ? t("unitDetail.viewPropertyOne", property.units.length)
+              : t("unitDetail.viewPropertyMany", property.units.length)}
           </Text>
         </Pressable>
       </ScrollView>
@@ -287,6 +289,7 @@ function UnitEditor({
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useT();
   const [unitLabel, setUnitLabel] = useState(unit.unit_label ?? "");
   const [priceText, setPriceText] = useState(
     unit.price_cents != null ? String(unit.price_cents / 100) : "",
@@ -320,7 +323,7 @@ function UnitEditor({
       });
       onSaved();
     } catch (err: any) {
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert(t("common.saveFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -328,17 +331,17 @@ function UnitEditor({
 
   return (
     <View style={styles.editorCard}>
-      <Text style={styles.editorLabel}>Label</Text>
+      <Text style={styles.editorLabel}>{t("unitDetail.labelInput")}</Text>
       <TextInput
         style={styles.input}
         value={unitLabel}
         onChangeText={setUnitLabel}
-        placeholder="e.g. Apt 4B (optional)"
+        placeholder={t("unitDetail.labelPlaceholder")}
         placeholderTextColor={colors.textMuted}
       />
       <View style={styles.editorRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.editorLabel}>Price</Text>
+          <Text style={styles.editorLabel}>{t("unitDetail.price")}</Text>
           <TextInput
             style={styles.input}
             value={priceText}
@@ -349,7 +352,7 @@ function UnitEditor({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.editorLabel}>Sqft</Text>
+          <Text style={styles.editorLabel}>{t("unitDetail.sqft")}</Text>
           <TextInput
             style={styles.input}
             value={sqftText}
@@ -362,7 +365,7 @@ function UnitEditor({
       </View>
       <View style={styles.editorRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.editorLabel}>Beds</Text>
+          <Text style={styles.editorLabel}>{t("unitDetail.beds")}</Text>
           <TextInput
             style={styles.input}
             value={bedsText}
@@ -373,7 +376,7 @@ function UnitEditor({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.editorLabel}>Baths</Text>
+          <Text style={styles.editorLabel}>{t("unitDetail.baths")}</Text>
           <TextInput
             style={styles.input}
             value={bathsText}
@@ -393,7 +396,7 @@ function UnitEditor({
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.editorCancelText}>Cancel</Text>
+          <Text style={styles.editorCancelText}>{t("common.cancel")}</Text>
         </Pressable>
         <Pressable
           onPress={save}
@@ -406,7 +409,7 @@ function UnitEditor({
           {busy ? (
             <ActivityIndicator color={colors.textInverse} />
           ) : (
-            <Text style={styles.editorSaveText}>Save</Text>
+            <Text style={styles.editorSaveText}>{t("common.save")}</Text>
           )}
         </Pressable>
       </View>
@@ -423,6 +426,7 @@ function UnitNotesSection({
   notes: Note[];
   onChanged: () => Promise<void>;
 }) {
+  const { t } = useT();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -439,7 +443,7 @@ function UnitNotesSection({
       setAdding(false);
       await onChanged();
     } catch (err: any) {
-      Alert.alert("Couldn't add note", err?.message ?? String(err));
+      Alert.alert(t("unitDetail.addNoteFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
@@ -455,17 +459,17 @@ function UnitNotesSection({
       setEditDraft("");
       await onChanged();
     } catch (err: any) {
-      Alert.alert("Couldn't save", err?.message ?? String(err));
+      Alert.alert(t("unitDetail.saveNoteFailed"), err?.message ?? String(err));
     } finally {
       setBusy(false);
     }
   }
 
   function confirmDelete(noteId: string) {
-    Alert.alert("Delete this note?", "This is permanent.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("unitDetail.deleteNoteTitle"), t("common.permanent"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           setBusy(true);
@@ -473,7 +477,7 @@ function UnitNotesSection({
             await deleteNote(noteId);
             await onChanged();
           } catch (err: any) {
-            Alert.alert("Couldn't delete", err?.message ?? String(err));
+            Alert.alert(t("unitDetail.deleteNoteFailed"), err?.message ?? String(err));
           } finally {
             setBusy(false);
           }
@@ -485,7 +489,7 @@ function UnitNotesSection({
   return (
     <View style={styles.notesSection}>
       <View style={styles.notesHeader}>
-        <Text style={styles.sectionTitle}>Notes</Text>
+        <Text style={styles.sectionTitle}>{t("unitDetail.notes")}</Text>
         <Pressable
           onPress={() => {
             setAdding((a) => !a);
@@ -494,7 +498,9 @@ function UnitNotesSection({
           }}
           hitSlop={6}
         >
-          <Text style={styles.addLink}>{adding ? "− Cancel" : "+ Add note"}</Text>
+          <Text style={styles.addLink}>
+            {adding ? t("unitDetail.cancelAdd") : t("unitDetail.addNote")}
+          </Text>
         </Pressable>
       </View>
 
@@ -504,7 +510,7 @@ function UnitNotesSection({
             style={styles.noteInput}
             value={draft}
             onChangeText={setDraft}
-            placeholder="Kitchen too small, balcony faces east, …"
+            placeholder={t("unitDetail.notePlaceholder")}
             placeholderTextColor={colors.textMuted}
             multiline
             autoFocus
@@ -521,14 +527,14 @@ function UnitNotesSection({
             {busy ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.noteSaveText}>Save</Text>
+              <Text style={styles.noteSaveText}>{t("common.save")}</Text>
             )}
           </Pressable>
         </View>
       ) : null}
 
       {notes.length === 0 && !adding ? (
-        <Text style={styles.notesEmpty}>No notes yet for this unit.</Text>
+        <Text style={styles.notesEmpty}>{t("unitDetail.noNotesYet")}</Text>
       ) : null}
 
       {notes.map((n) =>
@@ -553,7 +559,7 @@ function UnitNotesSection({
                   pressed && { opacity: 0.85 },
                 ]}
               >
-                <Text style={styles.noteCancelText}>Cancel</Text>
+                <Text style={styles.noteCancelText}>{t("common.cancel")}</Text>
               </Pressable>
               <Pressable
                 onPress={() => saveEdit(n.id)}
@@ -567,7 +573,7 @@ function UnitNotesSection({
                 {busy ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.noteSaveText}>Save</Text>
+                  <Text style={styles.noteSaveText}>{t("common.save")}</Text>
                 )}
               </Pressable>
             </View>
@@ -584,10 +590,10 @@ function UnitNotesSection({
                 }}
                 hitSlop={6}
               >
-                <Text style={styles.noteActionLink}>Edit</Text>
+                <Text style={styles.noteActionLink}>{t("common.edit")}</Text>
               </Pressable>
               <Pressable onPress={() => confirmDelete(n.id)} hitSlop={6}>
-                <Text style={styles.noteActionLinkDanger}>Delete</Text>
+                <Text style={styles.noteActionLinkDanger}>{t("common.delete")}</Text>
               </Pressable>
             </View>
           </View>
@@ -597,30 +603,33 @@ function UnitNotesSection({
   );
 }
 
-function unitTitle(u: Unit): string {
+function unitTitle(
+  u: Unit,
+  t: (key: string, ...args: Array<string | number>) => string,
+): string {
   if (u.unit_label?.trim()) return u.unit_label;
-  switch (u.unit_type) {
-    case "Studio":
-    case "studio":
-      return "Studio";
-    case "1B":
-      return "1-bedroom";
-    case "2B":
-      return "2-bedroom";
-    case "3B":
-      return "3-bedroom";
-    default:
-      return u.unit_type;
-  }
+  return unitTypeLabel(t, u.unit_type);
 }
 
-function unitDetailSubtitle(u: Unit): string {
+function unitDetailSubtitle(
+  u: Unit,
+  t: (key: string, ...args: Array<string | number>) => string,
+): string {
   const parts: string[] = [];
-  if (u.beds != null) parts.push(`${u.beds} bed${u.beds === 1 ? "" : "s"}`);
+  if (u.beds != null)
+    parts.push(
+      u.beds === 1
+        ? t("unitDetail.bedOne", u.beds)
+        : t("unitDetail.bedMany", u.beds),
+    );
   if (u.baths != null)
-    parts.push(`${u.baths} bath${u.baths === 1 ? "" : "s"}`);
-  if (u.sqft != null) parts.push(`${u.sqft} sqft`);
-  return parts.length === 0 ? "No specs yet" : parts.join(" · ");
+    parts.push(
+      u.baths === 1
+        ? t("unitDetail.bathOne", u.baths)
+        : t("unitDetail.bathMany", u.baths),
+    );
+  if (u.sqft != null) parts.push(t("unitDetail.sqftValue", u.sqft));
+  return parts.length === 0 ? t("unitDetail.noSpecs") : parts.join(" · ");
 }
 
 const styles = StyleSheet.create({

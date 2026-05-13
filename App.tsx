@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { setOnAuthExpired } from "./src/api";
+import { LanguageProvider } from "./src/i18n";
 import AddPropertyScreen from "./src/screens/AddPropertyScreen";
 import EditPropertyScreen from "./src/screens/EditPropertyScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -45,6 +46,7 @@ export default function App() {
   }, []);
 
   return (
+    <LanguageProvider>
     <GestureHandlerRootView style={styles.root}>
       <StatusBar style="auto" />
       {screen.name === "loading" && (
@@ -138,6 +140,7 @@ export default function App() {
         />
       )}
     </GestureHandlerRootView>
+    </LanguageProvider>
   );
 }
 
