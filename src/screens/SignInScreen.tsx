@@ -211,9 +211,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: radii.pill,
-    backgroundColor: colors.surface,
+    // Matches the Preferences button style — soft purple background, deep
+    // purple text + thin primary border — so secondary actions read as
+    // "themed" without competing with the gradient Sign-in CTA.
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.primary,
     ...shadow.card,
   },
   langChipIcon: {
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
   langChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: colors.primaryDeep,
     letterSpacing: 0.3,
   },
 });
