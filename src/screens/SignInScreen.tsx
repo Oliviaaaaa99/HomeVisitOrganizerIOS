@@ -19,9 +19,14 @@ import { colors, radii, shadow } from "../theme";
 type Props = { onSignedIn: () => void };
 
 export default function SignInScreen({ onSignedIn }: Props) {
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
   const [idToken, setIdToken] = useState("olivia-trying-it:olivia@example.com");
   const [busy, setBusy] = useState(false);
+
+  // Show the *other* language as the chip label — tap to switch to it.
+  // Matches what users see on most localized landing pages.
+  const otherLang = lang === "en" ? "zh" : "en";
+  const otherLangLabel = otherLang === "zh" ? "中" : "EN";
 
   async function handleSignIn() {
     setBusy(true);
@@ -52,6 +57,18 @@ export default function SignInScreen({ onSignedIn }: Props) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        <Pressable
+          onPress={() => setLang(otherLang)}
+          hitSlop={10}
+          accessibilityLabel={`Switch language to ${otherLangLabel}`}
+          style={({ pressed }) => [
+            styles.langChip,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={styles.langChipIcon}>🌐</Text>
+          <Text style={styles.langChipText}>{otherLangLabel}</Text>
+        </Pressable>
         <View style={styles.inner}>
           <View style={styles.heroBadge}>
             <Text style={styles.heroEmoji}>🏡</Text>
@@ -173,6 +190,33 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: 16,
     fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  // Language toggle chip in the top-right of the screen. Position absolute
+  // so it sits over the centered content without shifting it. Padding-top
+  // accounts for the notch / dynamic island.
+  langChip: {
+    position: "absolute",
+    top: 60,
+    right: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
+  },
+  langChipIcon: {
+    fontSize: 13,
+  },
+  langChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textPrimary,
     letterSpacing: 0.3,
   },
 });
