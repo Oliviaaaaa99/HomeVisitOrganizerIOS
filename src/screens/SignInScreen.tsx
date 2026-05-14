@@ -23,10 +23,11 @@ export default function SignInScreen({ onSignedIn }: Props) {
   const [idToken, setIdToken] = useState("olivia-trying-it:olivia@example.com");
   const [busy, setBusy] = useState(false);
 
-  // Show the *other* language as the chip label — tap to switch to it.
-  // Matches what users see on most localized landing pages.
+  // Chip shows the *current* language (matches the Apple/Google/Nori
+  // pattern — the indicator reflects "you're seeing this language now").
+  // Tap switches to the other one.
+  const currentLangLabel = lang === "zh" ? "中" : "EN";
   const otherLang = lang === "en" ? "zh" : "en";
-  const otherLangLabel = otherLang === "zh" ? "中" : "EN";
 
   async function handleSignIn() {
     setBusy(true);
@@ -57,18 +58,6 @@ export default function SignInScreen({ onSignedIn }: Props) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Pressable
-          onPress={() => setLang(otherLang)}
-          hitSlop={10}
-          accessibilityLabel={`Switch language to ${otherLangLabel}`}
-          style={({ pressed }) => [
-            styles.langChip,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Text style={styles.langChipIcon}>🌐</Text>
-          <Text style={styles.langChipText}>{otherLangLabel}</Text>
-        </Pressable>
         <View style={styles.inner}>
           <View style={styles.heroBadge}>
             <Text style={styles.heroEmoji}>🏡</Text>
@@ -114,6 +103,22 @@ export default function SignInScreen({ onSignedIn }: Props) {
             </LinearGradient>
           </Pressable>
         </View>
+
+        {/* Rendered AFTER the inner View so it stacks on top — both in RN
+            (later sibling wins) and on web (zIndex needs the layered DOM
+            tree to actually receive pointer events). */}
+        <Pressable
+          onPress={() => setLang(otherLang)}
+          hitSlop={10}
+          accessibilityLabel={`Current language: ${currentLangLabel}. Tap to switch.`}
+          style={({ pressed }) => [
+            styles.langChip,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={styles.langChipIcon}>🌐</Text>
+          <Text style={styles.langChipText}>{currentLangLabel}</Text>
+        </Pressable>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -199,15 +204,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     right: 22,
+    zIndex: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: radii.pill,
-    backgroundColor: colors.surface,
+    // Matches the Preferences button style — soft purple background, deep
+    // purple text + thin primary border — so secondary actions read as
+    // "themed" without competing with the gradient Sign-in CTA.
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.primary,
     ...shadow.card,
   },
   langChipIcon: {
@@ -216,7 +225,7 @@ const styles = StyleSheet.create({
   langChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: colors.primaryDeep,
     letterSpacing: 0.3,
   },
 });
