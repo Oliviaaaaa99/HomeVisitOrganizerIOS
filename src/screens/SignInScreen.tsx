@@ -57,18 +57,6 @@ export default function SignInScreen({ onSignedIn }: Props) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Pressable
-          onPress={() => setLang(otherLang)}
-          hitSlop={10}
-          accessibilityLabel={`Switch language to ${otherLangLabel}`}
-          style={({ pressed }) => [
-            styles.langChip,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Text style={styles.langChipIcon}>🌐</Text>
-          <Text style={styles.langChipText}>{otherLangLabel}</Text>
-        </Pressable>
         <View style={styles.inner}>
           <View style={styles.heroBadge}>
             <Text style={styles.heroEmoji}>🏡</Text>
@@ -114,6 +102,22 @@ export default function SignInScreen({ onSignedIn }: Props) {
             </LinearGradient>
           </Pressable>
         </View>
+
+        {/* Rendered AFTER the inner View so it stacks on top — both in RN
+            (later sibling wins) and on web (zIndex needs the layered DOM
+            tree to actually receive pointer events). */}
+        <Pressable
+          onPress={() => setLang(otherLang)}
+          hitSlop={10}
+          accessibilityLabel={`Switch language to ${otherLangLabel}`}
+          style={({ pressed }) => [
+            styles.langChip,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={styles.langChipIcon}>🌐</Text>
+          <Text style={styles.langChipText}>{otherLangLabel}</Text>
+        </Pressable>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -199,6 +203,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     right: 22,
+    zIndex: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
