@@ -54,12 +54,15 @@ export const en = {
 
   signIn: {
     title: "Apartment Tour Tracker",
-    subtitle: "Tier 1 · dev sign-in",
-    identityLabel: "Identity (dev)",
-    placeholder: "external_id:email@example.com",
-    hint: "Format: anything-as-id:your@email — backend treats this as a fake Apple id_token. Different ids create different users.",
+    subtitle: "Demo — invitation only",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    passcodeLabel: "Passcode",
+    passcodePlaceholder: "6-character code",
+    inviteHint: "Need access? Please contact the developer for an invitation code.",
     signInBtn: "Sign in",
     signInFailed: "Sign in failed",
+    invalidCredentials: "Email or passcode is incorrect.",
   },
 
   home: {

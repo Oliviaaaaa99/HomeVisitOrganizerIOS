@@ -20,7 +20,8 @@ type Props = { onSignedIn: () => void };
 
 export default function SignInScreen({ onSignedIn }: Props) {
   const { t, lang, setLang } = useT();
-  const [idToken, setIdToken] = useState("olivia-trying-it:olivia@example.com");
+  const [email, setEmail] = useState("");
+  const [passcode, setPasscode] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Chip shows the *current* language (matches the Apple/Google/Nori
@@ -29,18 +30,19 @@ export default function SignInScreen({ onSignedIn }: Props) {
   const currentLangLabel = lang === "zh" ? "中" : "EN";
   const otherLang = lang === "en" ? "zh" : "en";
 
+  const canSubmit = email.trim().length > 0 && passcode.trim().length > 0 && !busy;
+
   async function handleSignIn() {
     setBusy(true);
     try {
-      const trimmed = idToken.trim();
-      const resp = await devSignIn(trimmed);
+      const trimmedEmail = email.trim();
+      const trimmedCode = passcode.trim();
+      // The dev verifier still parses "<id>:<email>" if a colon is present,
+      // but in invitation mode we just send the email — external_id ends up
+      // being the email, which is also the key in the backend's ALLOWED_USERS.
+      const resp = await devSignIn(trimmedEmail, trimmedCode);
       await saveTokens(resp.access_token, resp.refresh_token, resp.user_id);
-      // Backend stores email_hash, so we stash the email locally for display.
-      // Dev id_token format is "<external_id>:<email>"; later providers will
-      // surface the email via OAuth userinfo and we'll save that instead.
-      const colonIdx = trimmed.indexOf(":");
-      const email = colonIdx > -1 ? trimmed.slice(colonIdx + 1) : trimmed;
-      if (email) await saveUserEmail(email);
+      await saveUserEmail(trimmedEmail);
       onSignedIn();
     } catch (err: any) {
       Alert.alert(t("signIn.signInFailed"), err?.message ?? String(err));
@@ -67,26 +69,43 @@ export default function SignInScreen({ onSignedIn }: Props) {
           <Text style={styles.subtitle}>{t("signIn.subtitle")}</Text>
 
           <View style={styles.card}>
-            <Text style={styles.label}>{t("signIn.identityLabel")}</Text>
+            <Text style={styles.label}>{t("signIn.emailLabel")}</Text>
             <TextInput
               style={styles.input}
               autoCapitalize="none"
               autoCorrect={false}
-              value={idToken}
-              onChangeText={setIdToken}
-              placeholder={t("signIn.placeholder")}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t("signIn.emailPlaceholder")}
               placeholderTextColor={colors.textMuted}
             />
-            <Text style={styles.hint}>{t("signIn.hint")}</Text>
+
+            <Text style={[styles.label, styles.labelStacked]}>
+              {t("signIn.passcodeLabel")}
+            </Text>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              value={passcode}
+              onChangeText={setPasscode}
+              placeholder={t("signIn.passcodePlaceholder")}
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <Text style={styles.hint}>{t("signIn.inviteHint")}</Text>
           </View>
 
           <Pressable
             onPress={handleSignIn}
-            disabled={busy}
+            disabled={!canSubmit}
             style={({ pressed }) => [
               styles.buttonWrap,
               pressed && { opacity: 0.85 },
-              busy && { opacity: 0.6 },
+              !canSubmit && { opacity: 0.6 },
             ]}
           >
             <LinearGradient
@@ -169,6 +188,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 8,
+  },
+  // Top-margin for the second field's label so the email + passcode rows
+  // don't collide visually.
+  labelStacked: {
+    marginTop: 14,
   },
   input: {
     borderWidth: 1,

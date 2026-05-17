@@ -54,12 +54,15 @@ export const zh: Dict = {
 
   signIn: {
     title: "看房记录本",
-    subtitle: "Tier 1 · 开发登录",
-    identityLabel: "身份(开发)",
-    placeholder: "external_id:email@example.com",
-    hint: "格式: 任意id:你的邮箱 — 后端把它当作伪造的 Apple id_token。不同 id 会创建不同用户。",
+    subtitle: "Demo · 邀请制",
+    emailLabel: "邮箱",
+    emailPlaceholder: "you@example.com",
+    passcodeLabel: "邀请码",
+    passcodePlaceholder: "6 位字符",
+    inviteHint: "使用前请先找开发者要邀请码。",
     signInBtn: "登录",
     signInFailed: "登录失败",
+    invalidCredentials: "邮箱或邀请码不正确。",
   },
 
   home: {

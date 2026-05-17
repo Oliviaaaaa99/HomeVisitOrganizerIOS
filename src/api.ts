@@ -91,7 +91,17 @@ async function fetchJSON<T>(url: string, opts: RequestInit = {}): Promise<T> {
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`${res.status} ${url}: ${text || "(no body)"}`);
+    // Prefer the backend's `detail` (or `error`) field over dumping the
+    // raw body — alerts read much better that way.
+    let msg = text || "(no body)";
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed?.detail === "string") msg = parsed.detail;
+      else if (typeof parsed?.error === "string") msg = parsed.error;
+    } catch {
+      // Non-JSON body — leave msg as the raw text.
+    }
+    throw new Error(msg);
   }
   return text ? JSON.parse(text) : ({} as T);
 }
@@ -151,10 +161,17 @@ async function refreshSession(refreshToken: string): Promise<AuthResponse> {
 
 // --- auth ---
 
-export async function devSignIn(idToken: string): Promise<AuthResponse> {
+export async function devSignIn(
+  idToken: string,
+  passcode?: string,
+): Promise<AuthResponse> {
   return fetchJSON<AuthResponse>(`${API.USER}/v1/auth/exchange`, {
     method: "POST",
-    body: JSON.stringify({ provider: "dev", id_token: idToken }),
+    body: JSON.stringify({
+      provider: "dev",
+      id_token: idToken,
+      passcode: passcode ?? "",
+    }),
   });
 }
 
